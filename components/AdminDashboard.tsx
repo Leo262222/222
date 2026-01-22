@@ -79,15 +79,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }));
   };
 
+  // Avatar and QR Code Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'imageUrl' | 'bookingQrUrl') => {
     const file = e.target.files?.[0];
     if (file) {
-      // Limit file size to prevent localStorage quota issues (e.g., 2MB limit check could be added here)
+      // Limit file size to prevent localStorage quota issues
       const reader = new FileReader();
       reader.onloadend = () => {
         setAdvisorFormData(prev => ({
           ...prev,
           [field]: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // New: Certificate Upload Handler
+  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAdvisorFormData(prev => ({
+          ...prev,
+          certificates: [...(prev.certificates || []), reader.result as string]
         }));
       };
       reader.readAsDataURL(file);
@@ -102,16 +118,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleSpecialtiesZhChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const specs = e.target.value.split(',').map(s => s.trim()).filter(s => s !== '');
     setAdvisorFormData(prev => ({ ...prev, specialties_zh: specs }));
-  };
-
-  const handleCertificateAdd = () => {
-    const url = prompt(t.add_url);
-    if (url) {
-        setAdvisorFormData(prev => ({
-        ...prev,
-        certificates: [...(prev.certificates || []), url]
-      }));
-    }
   };
 
   const handleCertificateRemove = (index: number) => {
@@ -172,7 +178,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setIsAddingCategory(false);
       setEditingCategory(null);
   };
-  
+   
   const handleExit = () => {
       onExit();
       // Also trigger route change
@@ -461,24 +467,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         />
                         </div>
 
-                        {/* Certificates Management */}
+                        {/* Certificates Management (MODIFIED) */}
                         <div className="border-t pt-4 mt-2">
                         <div className="flex justify-between items-center mb-2">
                             <label className="block text-sm font-bold text-gray-700">{t.credentials}</label>
-                            <button 
-                            onClick={handleCertificateAdd}
-                            className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition"
-                            >
-                            {t.add_url}
-                            </button>
+                            {/* NEW: File Upload Button for Certificates */}
+                            <label className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition cursor-pointer flex items-center gap-1">
+                                <i className="fas fa-upload"></i> Upload
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    onChange={handleCertificateUpload}
+                                    className="hidden"
+                                />
+                            </label>
                         </div>
                         
                         <div className="space-y-2 max-h-40 overflow-y-auto">
                             {advisorFormData.certificates && advisorFormData.certificates.length > 0 ? (
                             advisorFormData.certificates.map((cert, index) => (
                                 <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                                {/* Display image thumbnail */}
                                 <img src={cert} alt="" className="w-8 h-8 object-cover rounded" />
-                                <span className="text-xs text-gray-500 truncate flex-1">{cert}</span>
+                                <span className="text-xs text-gray-500 truncate flex-1">Image {index + 1}</span>
                                 <button 
                                     onClick={() => handleCertificateRemove(index)}
                                     className="text-red-500 hover:text-red-700"
