@@ -7,58 +7,74 @@ import { dataService } from './services/dataService';
 const AdminApp: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
-  // Data State
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Load Data on Mount
+  // 从云端加载数据
+  const loadData = async () => {
+    setLoading(true);
+    try {
+        const fetchedAdvisors = await dataService.getAdvisors();
+        const fetchedCategories = await dataService.getCategories();
+        setAdvisors(fetchedAdvisors);
+        setCategories(fetchedCategories);
+    } catch (error) {
+        console.error("加载数据出错", error);
+        alert("连接数据库失败，请刷新重试。");
+    } finally {
+        setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = () => {
-        setAdvisors(dataService.getAdvisors());
-        setCategories(dataService.getCategories());
-    };
-    loadData();
-    
-    // Listen for cross-tab updates if testing on same origin
-    window.addEventListener('storage', loadData);
-    return () => window.removeEventListener('storage', loadData);
-  }, []);
+    if (isAuthenticated) {
+        loadData();
+    }
+  }, [isAuthenticated]);
 
-  // Handlers for Data Mutation
-  const handleUpdateAdvisor = (updatedAdvisor: Advisor) => {
-    const newAdvisors = advisors.map(a => a.id === updatedAdvisor.id ? updatedAdvisor : a);
-    setAdvisors(newAdvisors);
-    dataService.saveAdvisors(newAdvisors);
+  const handleUpdateAdvisor = async (updatedAdvisor: Advisor) => {
+    try {
+        await dataService.updateAdvisor(updatedAdvisor);
+        await loadData(); 
+    } catch (e) { alert("更新失败: " + e); }
   };
 
-  const handleAddAdvisor = (newAdvisor: Advisor) => {
-    const newAdvisors = [...advisors, newAdvisor];
-    setAdvisors(newAdvisors);
-    dataService.saveAdvisors(newAdvisors);
+  const handleAddAdvisor = async (newAdvisor: Advisor) => {
+    try {
+        await dataService.addAdvisor(newAdvisor);
+        await loadData();
+    } catch (e) { alert("添加失败: " + e); }
   };
 
-  const handleDeleteAdvisor = (id: string) => {
-    const newAdvisors = advisors.filter(a => a.id !== id);
-    setAdvisors(newAdvisors);
-    dataService.saveAdvisors(newAdvisors);
+  const handleDeleteAdvisor = async (id: string) => {
+    if(!window.confirm("确定要删除吗？")) return;
+    try {
+        await dataService.deleteAdvisor(id);
+        await loadData();
+    } catch (e) { alert("删除失败: " + e); }
   };
 
-  const handleAddCategory = (newCategory: Category) => {
-    const newCategories = [...categories, newCategory];
-    setCategories(newCategories);
-    dataService.saveCategories(newCategories);
+  const handleAddCategory = async (newCategory: Category) => {
+     try {
+        await dataService.addCategory(newCategory);
+        await loadData();
+     } catch (e) { alert("添加分类失败: " + e); }
   };
 
-  const handleDeleteCategory = (id: string) => {
-    const newCategories = categories.filter(c => c.id !== id);
-    setCategories(newCategories);
-    dataService.saveCategories(newCategories);
+  const handleDeleteCategory = async (id: string) => {
+     if(!window.confirm("确定要删除此分类吗？")) return;
+     try {
+        await dataService.deleteCategory(id);
+        await loadData();
+     } catch (e) { alert("删除分类失败: " + e); }
   };
 
-  const handleUpdateCategory = (updatedCategory: Category) => {
-    const newCategories = categories.map(c => c.id === updatedCategory.id ? updatedCategory : c);
-    setCategories(newCategories);
-    dataService.saveCategories(newCategories);
+  const handleUpdateCategory = async (updatedCategory: Category) => {
+     try {
+        await dataService.updateCategory(updatedCategory);
+        await loadData();
+     } catch (e) { alert("更新分类失败: " + e); }
   };
 
   const handleLogout = () => {
@@ -69,18 +85,26 @@ const AdminApp: React.FC = () => {
     return <AdminLogin onLogin={() => setIsAuthenticated(true)} />;
   }
 
+  if (loading && advisors.length === 0 && categories.length === 0) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-600 font-bold">
+            正在连接云端数据库...
+        </div>
+      );
+  }
+
   return (
     <AdminDashboard 
       advisors={advisors}
       categories={categories}
-      language="zh" // Default Admin Language
+      language="zh"
       onUpdateAdvisor={handleUpdateAdvisor}
       onAddAdvisor={handleAddAdvisor}
       onDeleteAdvisor={handleDeleteAdvisor}
       onAddCategory={handleAddCategory}
       onDeleteCategory={handleDeleteCategory}
       onUpdateCategory={handleUpdateCategory}
-      onExit={handleLogout} // Re-purposed to Logout
+      onExit={handleLogout}
     />
   );
 };
