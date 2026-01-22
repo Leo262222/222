@@ -1,8 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { Advisor, Language } from "../types";
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// 🔴 修复点 1: 从 process.env 改为 import.meta.env (浏览器专用写法)
+// 🔴 修复点 2: 使用您在 Vercel 里填好的 VITE_GOOGLE_API_KEY
+const apiKey = import.meta.env.VITE_GOOGLE_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+
+if (!apiKey) {
+  console.error("API Key missing! Please set VITE_GOOGLE_API_KEY in Vercel.");
+}
+
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 export const getSpiritGuideResponse = async (
   history: { role: string; parts: { text: string }[] }[],
@@ -11,7 +18,6 @@ export const getSpiritGuideResponse = async (
   language: Language
 ): Promise<string> => {
   try {
-    // Create a context string about available advisors
     const advisorContext = advisors.map(
       (a) => {
         const name = language === 'zh' ? (a.name_zh || a.name) : a.name;
@@ -41,7 +47,8 @@ export const getSpiritGuideResponse = async (
       5. Always use a soothing, non-judgmental tone.
     `;
 
-    const model = 'gemini-3-flash-preview';
+    // 🔴 修复点 3: 修正模型名称 (Gemini 3 不存在，改为目前最稳的 1.5-flash)
+    const model = 'gemini-1.5-flash';
 
     const response = await ai.models.generateContent({
       model: model,
