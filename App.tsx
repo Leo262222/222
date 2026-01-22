@@ -87,17 +87,17 @@ function App() {
     ? advisors 
     : advisors.filter(advisor => advisor.category === activeCategory);
 
-  // --- 处理函数 (修复报错的关键) ---
+  // --- 处理函数 ---
   
   const handleSelectAdvisor = (advisor: Advisor) => {
-    // 暂时打印日志，或者这里可以弹出一个详情 Modal
     console.log("Selected advisor:", advisor.name);
     alert(`您选择了：${advisor.name}\n(详情页功能开发中...)`);
   };
 
   const handleConnect = (advisor: Advisor, type: ConnectionType) => {
     console.log("Connect via:", type, "with", advisor.name);
-    alert(`即将与 ${advisor.name} 进行 ${type === 'chat' ? '文字聊天' : '语音通话'}...`);
+    // 修复点：这里原来写的是 type === 'chat'，现在改成了 ConnectionType.CHAT
+    alert(`即将与 ${advisor.name} 进行 ${type === ConnectionType.CHAT ? '文字聊天' : '语音通话'}...`);
   };
 
   // 加载中界面
@@ -131,9 +131,9 @@ function App() {
               <AdvisorCard 
                 key={advisor.id} 
                 advisor={advisor}
-                language={language}        // 修复：传入语言
-                onSelect={handleSelectAdvisor} // 修复：传入选择回调
-                onConnect={handleConnect}      // 修复：传入连接回调
+                language={language}        
+                onSelect={handleSelectAdvisor} 
+                onConnect={handleConnect}      
               />
             ))}
           </div>
@@ -164,7 +164,7 @@ function App() {
       <SpiritGuideChat 
         isOpen={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
-        advisors={advisors} // 修复：传入所有顾问列表，而不是单个
+        advisors={advisors} 
         language={language}
       />
     </div>
