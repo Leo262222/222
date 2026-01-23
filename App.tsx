@@ -298,4 +298,11 @@ function App() {
       )}
 
       {/* 版权 */}
-      <footer className="text-center text-gray-300 text-
+      <footer className="text-center text-gray-300 text-[10px] py-8">
+        <p>© 2026 Liuzi Tree Hollow. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
