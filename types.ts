@@ -1,5 +1,4 @@
-// ✅ 核心修复：将 ConnectionType 定义为枚举 (enum)
-// 这样 Vercel 才能正确识别，构建才会成功！
+// 🔴 核心修复：必须使用 export enum，否则 Vercel 永远无法构建成功！
 export enum ConnectionType {
   CHAT = 'chat',
   VOICE = 'voice',
@@ -33,9 +32,9 @@ export interface ChatMessage {
 export interface Advisor {
   id: string;
   name: string;
-  name_zh?: string;
+  name_zh?: string;     // 中文名
   title: string;
-  title_zh?: string;
+  title_zh?: string;    // 中文头衔
   imageUrl: string;
   category: string;
   pricePerMinute: number;
@@ -44,10 +43,10 @@ export interface Advisor {
   rating: number;
   reviewCount: number;
   bio: string;
-  bio_zh?: string;
+  bio_zh?: string;      // 中文简介
   specialties: string[];
-  specialties_zh?: string[];
+  specialties_zh?: string[]; // 中文擅长 (数组)
   reviews: Review[];
   certificates?: string[];
-  bookingQrUrl?: string; 
+  bookingQrUrl?: string; // 扫码图片链接
 }
