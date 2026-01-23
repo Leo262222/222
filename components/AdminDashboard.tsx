@@ -8,7 +8,7 @@ const AdminDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAdvisor, setEditingAdvisor] = useState<Partial<Advisor> | null>(null);
 
-  // 专门用于编辑中文擅长话题的文本状态 (逗号分隔)
+  // 专门用于编辑中文擅长话题的文本状态
   const [specialtiesText, setSpecialtiesText] = useState('');
 
   // 1. 加载数据
@@ -33,15 +33,14 @@ const AdminDashboard = () => {
     fetchAdvisors();
   }, []);
 
-  // 2. 退出登录功能 (新增)
+  // 2. 退出登录
   const handleLogout = async () => {
     if (window.confirm('确定要退出登录吗？')) {
       await supabase.auth.signOut();
-      // 退出后 AdminApp 会自动检测到并跳转回登录页
     }
   };
 
-  // 3. 删除功能
+  // 3. 删除
   const handleDelete = async (id: string) => {
     if (!window.confirm('确定要删除这位顾问吗？')) return;
     try {
@@ -53,24 +52,26 @@ const AdminDashboard = () => {
     }
   };
 
-  // 4. 打开弹窗 (关键修复：增加安全检查)
+  // 4. 打开弹窗 (数据清洗)
   const openModal = (advisor: Advisor | null = null) => {
     if (advisor) {
       setEditingAdvisor({ ...advisor });
       
-      // 🛡️ 修复报错的核心代码：
-      // 先检查 specialties_zh 是不是真的是一个数组。
-      // 如果是数组，用 comma join；如果不是(是null或者脏数据字符串)，就给个空字符串，防止报错。
+      // 处理擅长话题显示：
       let safeText = '';
-      if (Array.isArray(advisor.specialties_zh)) {
-        safeText = advisor.specialties_zh.join(', ');
-      } else if (typeof advisor.specialties_zh === 'string') {
-        safeText = advisor.specialties_zh; // 如果已经是字符串，直接用
+      const raw = advisor.specialties_zh;
+
+      if (Array.isArray(raw)) {
+        safeText = raw.join(', ');
+      } else if (typeof raw === 'string') {
+        // 清洗 ["xxx"] 格式
+        const cleaned = (raw as string).replace(/[\[\]"']/g, '');
+        safeText = cleaned;
       }
       setSpecialtiesText(safeText);
 
     } else {
-      // 新增时的默认值
+      // 新增默认值
       setEditingAdvisor({ 
         isOnline: true, 
         pricePerMinute: 1.99, 
@@ -84,13 +85,17 @@ const AdminDashboard = () => {
     setIsModalOpen(true);
   };
 
-  // 5. 图片上传处理
+  // 5. 图片上传 (🚀 已放宽限制至 2MB)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'imageUrl' | 'bookingQrUrl') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 800 * 1024) {
-      alert("图片太大了！请上传小于 800KB 的图片。");
+    // 限制 2MB (2 * 1024 * 1024)
+    // 这是 Vercel Serverless Function 的安全极限，再大就会报错 Failed to fetch
+    const MAX_SIZE = 2 * 1024 * 1024; 
+
+    if (file.size > MAX_SIZE) {
+      alert(`图片太大了！当前图片 ${(file.size / 1024 / 1024).toFixed(2)}MB。\n\n由于服务器限制，请上传小于 2MB 的图片。\n(建议用手机截图或微信发送一下，体积会自动变小)`);
       return;
     }
 
@@ -101,7 +106,7 @@ const AdminDashboard = () => {
     reader.readAsDataURL(file);
   };
 
-  // 6. 保存逻辑
+  // 6. 保存 (清洗数据)
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAdvisor) return;
@@ -109,8 +114,9 @@ const AdminDashboard = () => {
     try {
       const isEdit = !!editingAdvisor.id;
       
-      // 处理擅长话题：把中文逗号字符串 -> 切割成数组
-      const specialtiesArray = specialtiesText.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
+      // 彻底清洗输入内容 (去掉符号)
+      const cleanInput = specialtiesText.replace(/[\[\]"']/g, ''); 
+      const specialtiesArray = cleanInput.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
 
       // 整理数据
       const saveData = {
@@ -146,11 +152,17 @@ const AdminDashboard = () => {
       }
 
       setIsModalOpen(false);
-      fetchAdvisors(); 
+      fetchAdvisors(); // 刷新列表
       alert('保存成功！');
+
     } catch (error: any) {
       console.error('Save error:', error);
-      alert('保存失败: ' + error.message);
+      // 智能错误提示
+      if (error.message && (error.message.includes('fetch') || error.message.includes('Payload'))) {
+        alert('保存失败：图片还是太大了。\n\n虽然我们放宽了限制，但这张图可能超过了 4MB (转码后)。\n建议：请用微信截图该图片后再上传，绝对能过！');
+      } else {
+        alert('保存失败: ' + error.message);
+      }
     }
   };
 
@@ -163,7 +175,6 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-5xl mx-auto">
-        {/* 顶部栏：标题 + 退出按钮 */}
         <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">留子树洞 - 顾问管理</h1>
@@ -173,7 +184,7 @@ const AdminDashboard = () => {
               + 添加顾问
             </button>
             <button onClick={handleLogout} className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 font-medium transition">
-              退出登录
+              退出
             </button>
           </div>
         </div>
@@ -245,13 +256,20 @@ const AdminDashboard = () => {
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">个人简介 (详细介绍)</label>
-                <textarea rows={4} value={editingAdvisor.bio_zh || ''} onChange={e => handleChange('bio_zh', e.target.value)} className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm" placeholder="请在这里填写详细的个人经历、咨询风格等..." />
+                <textarea rows={4} value={editingAdvisor.bio_zh || ''} onChange={e => handleChange('bio_zh', e.target.value)} className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm" placeholder="请在这里填写详细的个人经历..." />
               </div>
 
               <div className="bg-gray-50 p-4 rounded-xl space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">擅长话题 (用逗号分隔)</label>
-                  <input type="text" value={specialtiesText} onChange={e => setSpecialtiesText(e.target.value)} className="w-full border p-2 rounded-lg" placeholder="情感复合, 事业发展, 原生家庭" />
+                  <input 
+                    type="text" 
+                    value={specialtiesText} 
+                    onChange={e => setSpecialtiesText(e.target.value)} 
+                    className="w-full border p-2 rounded-lg" 
+                    placeholder="例如: 情感复合, 事业发展" 
+                  />
+                  <p className="text-xs text-gray-400 mt-1">请只输入文字，不需要输入 [""] 等符号</p>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4">
@@ -279,7 +297,7 @@ const AdminDashboard = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-sm font-bold text-gray-700 mb-2">头像图片</div>
+                  <div className="text-sm font-bold text-gray-700 mb-2">头像 (限制 2MB)</div>
                   {editingAdvisor.imageUrl ? (
                     <img src={editingAdvisor.imageUrl} alt="Avatar" className="w-16 h-16 rounded-full mx-auto mb-2 object-cover" />
                   ) : (
@@ -289,33 +307,10 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-sm font-bold text-gray-700 mb-2">预约二维码</div>
+                  <div className="text-sm font-bold text-gray-700 mb-2">二维码 (限制 2MB)</div>
                   {editingAdvisor.bookingQrUrl ? (
                     <img src={editingAdvisor.bookingQrUrl} alt="QR" className="w-16 h-16 mx-auto mb-2 object-contain" />
                   ) : (
                     <div className="w-16 h-16 bg-gray-200 mx-auto mb-2 flex items-center justify-center text-xs text-gray-400">无图</div>
                   )}
-                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'bookingQrUrl')} className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:bg-purple-100 file:text-purple-700" />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t mt-4">
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id="online" checked={editingAdvisor.isOnline || false} onChange={e => handleChange('isOnline', e.target.checked)} className="w-5 h-5 text-purple-600 rounded" />
-                  <label htmlFor="online" className="text-sm font-bold text-gray-700">设为在线</label>
-                </div>
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100">取消</button>
-                  <button type="submit" className="px-6 py-2 rounded-lg bg-purple-900 text-white font-bold hover:bg-purple-800">保存</button>
-                </div>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default AdminDashboard;
+                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'bookingQrUrl')} className="w-full text-xs text-gray-500 file:mr-2
