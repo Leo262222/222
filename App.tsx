@@ -6,7 +6,7 @@ import QrCodeModal from './components/QrCodeModal';
 import { Advisor, Category, ConnectionType, Language } from './types';
 import { dataService } from './services/dataService';
 
-// --- 新版 Hero 头部组件 (还原最初设计) ---
+// --- Hero 头部组件 ---
 const HeroSection = ({ onSearch }: { onSearch: (term: string) => void }) => (
   <div className="bg-gradient-to-r from-[#0f392b] to-[#2e1a47] text-white pt-6 pb-16 px-4 relative overflow-hidden">
     {/* 顶部导航 */}
@@ -34,7 +34,7 @@ const HeroSection = ({ onSearch }: { onSearch: (term: string) => void }) => (
         留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是深夜的孤独，连线懂你的玄学导师，将异乡秘密化为指引情路的答案。
       </p>
 
-      {/* 半透明搜索框 */}
+      {/* 搜索框 */}
       <div className="relative max-w-lg group">
         <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-white transition-colors"></i>
         <input 
@@ -85,19 +85,17 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({ categories, activeCateg
 // --- 主程序 App ---
 function App() {
   const [activeCategory, setActiveCategory] = useState<string>('All');
-  const [searchTerm, setSearchTerm] = useState(''); // 新增：搜索状态
+  const [searchTerm, setSearchTerm] = useState('');
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // 弹窗状态
   const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [qrAdvisor, setQrAdvisor] = useState<Advisor | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [language, setLanguage] = useState<Language>('zh');
 
-  // 加载数据
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -114,12 +112,9 @@ function App() {
     loadData();
   }, []);
 
-  // --- 增强版筛选逻辑 (分类 + 搜索) ---
   const filteredAdvisors = useMemo(() => {
     return advisors.filter(advisor => {
-      // 1. 匹配分类
       const matchCategory = activeCategory === 'All' || advisor.category === activeCategory;
-      // 2. 匹配搜索词 (名字、标签、简介)
       const term = searchTerm.toLowerCase();
       const matchSearch = !term || 
         advisor.name.toLowerCase().includes(term) ||
@@ -130,13 +125,10 @@ function App() {
     });
   }, [advisors, activeCategory, searchTerm]);
 
-  // 计算在线人数
   const onlineCount = advisors.filter(a => a.isOnline).length;
 
-  // --- 交互处理 ---
   const handleSelectAdvisor = (advisor: Advisor) => setSelectedAdvisor(advisor);
   const handleCloseModal = () => setSelectedAdvisor(null);
-  
   const handleConnect = (advisor: Advisor, type: ConnectionType) => {
     setQrAdvisor(advisor);
     setIsQrOpen(true);
@@ -155,13 +147,11 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] relative font-sans">
-      {/* 1. Hero 区域 */}
       <HeroSection onSearch={setSearchTerm} />
       
-      {/* 2. 主内容区域 */}
       <main className="max-w-7xl mx-auto px-4 -mt-6 relative z-10 pb-24">
         
-        {/* 分类过滤器 (白色背景条) */}
+        {/* 分类过滤器 */}
         <div className="bg-white p-2 rounded-xl shadow-lg mb-8 border border-gray-100">
           <CategoryFilter 
             categories={categories}
@@ -170,9 +160,8 @@ function App() {
           />
         </div>
 
-        {/* 列表标题栏 */}
-        <div className="flex justify-between items-end mb-6 px-2">
-          <h2 className="text-xl font-bold text-gray-800">暖心倾听者</h2>
+        {/* 列表工具栏：已去除标题，只保留右侧人数 */}
+        <div className="flex justify-end items-center mb-6 px-2">
           <span className="text-sm text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">
             <span className="text-green-500 font-bold mr-1">●</span>
             {onlineCount} 位倾听者在线
@@ -200,7 +189,6 @@ function App() {
         )}
       </main>
 
-      {/* 全局弹窗组件 */}
       <AdvisorModal 
         advisor={selectedAdvisor}
         language={language}
@@ -215,7 +203,6 @@ function App() {
         advisorName={qrAdvisor?.name || '顾问'}
       />
 
-      {/* 树洞守护者 */}
       {!isGuideOpen && (
         <button
           onClick={() => setIsGuideOpen(true)}
