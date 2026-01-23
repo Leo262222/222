@@ -1,4 +1,4 @@
-// 将 ConnectionType 改为 enum (枚举)，解决 "used as a value" 报错
+// 必须是 export enum，不能是 export type
 export enum ConnectionType {
   CHAT = 'chat',
   VOICE = 'voice',
@@ -48,5 +48,5 @@ export interface Advisor {
   specialties_zh?: string[];
   reviews: Review[];
   certificates?: string[];
-  bookingQrUrl?: string; // 扫码必备字段
+  bookingQrUrl?: string;
 }
