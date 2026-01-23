@@ -32,11 +32,15 @@ function AdminApp() {
     );
   }
 
-  // 核心修改：不再给 AdminDashboard 传任何参数
-  // 因为 AdminDashboard 现在已经能够自己获取数据了
   return (
     <div className="antialiased text-gray-900 bg-gray-100 min-h-screen">
-      {session ? <AdminDashboard /> : <AdminLogin />}
+      {session ? (
+        <AdminDashboard />
+      ) : (
+        // ✅ 核心修复：添加 onLogin={() => {}} 
+        // 这是一个空函数，纯粹为了满足 AdminLogin 的“胃口”，解决报错
+        <AdminLogin onLogin={() => {}} />
+      )}
     </div>
   );
 }
