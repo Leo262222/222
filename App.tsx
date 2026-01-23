@@ -19,6 +19,9 @@ function App() {
   const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // ✅ 新增状态：用于追踪当前点击查看的大图证书地址
+  const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
+
   // 1. 获取顾问数据
   useEffect(() => {
     const fetchData = async () => {
@@ -159,7 +162,7 @@ function App() {
         )}
       </main>
 
-      {/* 弹窗 */}
+      {/* 顾问详情弹窗 */}
       {selectedAdvisor && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div 
@@ -242,13 +245,14 @@ function App() {
                         <img 
                           src={cert} 
                           alt="Certificate" 
-                          className="h-24 w-auto rounded-lg border border-gray-200 shadow-sm object-cover cursor-pointer"
-                          onClick={() => window.open(cert, '_blank')}
+                          // ✅ 修改点：点击时设置当前选中的证书图片地址，而不是打开新窗口
+                          className="h-24 w-auto rounded-lg border border-gray-200 shadow-sm object-cover cursor-zoom-in hover:opacity-90 transition"
+                          onClick={() => setSelectedCertificate(cert)}
                         />
                       </div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-gray-400">已通过平台资质审核</p>
+                  <p className="text-[10px] text-gray-400">已通过平台资质审核，点击可查看大图</p>
                 </div>
               )}
 
@@ -272,12 +276,26 @@ function App() {
         </div>
       )}
 
-      {/* 版权 */}
-      <footer className="text-center text-gray-300 text-[10px] py-8">
-        <p>© 2026 Liuzi Tree Hollow. All rights reserved.</p>
-      </footer>
-    </div>
-  );
-}
+      {/* ✅ 新增：全屏图片查看弹窗 (Z-index 必须比顾问详情弹窗高) */}
+      {selectedCertificate && (
+        <div 
+          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setSelectedCertificate(null)} // 点击背景或图片关闭
+        >
+          {/* 关闭按钮（可选，增加易用性） */}
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/20 rounded-full p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
 
-export default App;
+          <img 
+            src={selectedCertificate} 
+            alt="Full Certificate" 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-zoom-in"
+          />
+        </div>
+      )}
+
+      {/* 版权 */}
+      <footer className="text-center text-gray-300 text-
