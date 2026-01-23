@@ -1,93 +1,81 @@
 import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
 
 interface AdminLoginProps {
   onLogin: () => void;
 }
 
 const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Hardcoded credentials as requested for separate configuration
-    if (username === '2399518' && password === 'xxx2399518') {
-      onLogin();
-    } else {
-      setError('Invalid credentials');
+    setLoading(true);
+
+    try {
+      // 1. 尝试登录
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        // 如果出错，直接弹窗显示错误原因
+        alert('登录失败: ' + error.message);
+      } else {
+        // 登录成功
+        onLogin(); 
+      }
+    } catch (error: any) {
+      alert('发生意外错误: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleBackToApp = (e: React.MouseEvent) => {
-      e.preventDefault();
-      const event = new CustomEvent('lumina-route-change', { detail: { view: 'app' } });
-      window.dispatchEvent(event);
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md animate-[fadeIn_0.5s_ease-out]">
-        <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-lumina-dark rounded-full flex items-center justify-center mx-auto mb-4 text-lumina-gold text-2xl">
-                <i className="fas fa-shield-alt"></i>
-            </div>
-            <h1 className="text-2xl font-serif font-bold text-gray-800">Admin Portal</h1>
-            <p className="text-gray-500 text-sm mt-1">Authorized Personnel Only</p>
+    <div className="flex min-h-screen items-center justify-center bg-gray-900 p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="bg-purple-900 p-8 text-center">
+          <h2 className="text-3xl font-bold text-white mb-2">留子树洞</h2>
+          <p className="text-purple-200 text-sm">管理员后台登录系统</p>
         </div>
 
-        {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 flex items-center gap-2">
-                <i className="fas fa-exclamation-circle"></i> {error}
-            </div>
-        )}
+        <form onSubmit={handleLogin} className="p-8 space-y-6">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">管理员邮箱 (Email)</label>
+            <input
+              type="email" // 强制要求输入邮箱格式
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              placeholder="admin@example.com"
+            />
+          </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Username</label>
-                <div className="relative">
-                    <input 
-                        type="text" 
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-lumina-purple focus:ring-1 focus:ring-lumina-purple transition"
-                        placeholder="Enter username"
-                    />
-                    <i className="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                </div>
-            </div>
-            <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Password</label>
-                <div className="relative">
-                    <input 
-                        type="password" 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-lumina-purple focus:ring-1 focus:ring-lumina-purple transition"
-                        placeholder="Enter password"
-                    />
-                    <i className="fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                </div>
-            </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">密码</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              placeholder="••••••••"
+            />
+          </div>
 
-            <button 
-                type="submit" 
-                className="w-full bg-lumina-dark text-white py-3 rounded-lg font-bold hover:bg-lumina-purple transition shadow-lg"
-            >
-                Login
-            </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-purple-900 text-white font-bold py-3 rounded-lg hover:bg-purple-800 transition-colors disabled:opacity-50"
+          >
+            {loading ? '登录中...' : '立即登录'}
+          </button>
         </form>
-
-        <div className="mt-8 text-center space-y-2">
-             <div className="text-xs text-gray-400">
-                &copy; Liuzi Tree Hollow Management System
-             </div>
-             <div>
-                <a href="/" onClick={handleBackToApp} className="text-sm text-lumina-purple hover:underline cursor-pointer">
-                    &larr; Back to Hollow
-                </a>
-             </div>
-        </div>
       </div>
     </div>
   );
