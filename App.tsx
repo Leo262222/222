@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdvisorCard from './components/AdvisorCard';
 import SpiritGuideChat from './components/SpiritGuideChat';
+import AdvisorModal from './components/AdvisorModal'; // 引入详情页组件
 import { Advisor, Category, ConnectionType, Language } from './types';
 import { dataService } from './services/dataService';
 
@@ -60,9 +61,12 @@ function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // 新增状态：控制树洞守护者聊天窗口
+  // 详情页状态：选中哪个顾问，就显示哪个的详情 (null = 不显示)
+  const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
+
+  // 树洞聊天窗口状态
   const [isGuideOpen, setIsGuideOpen] = useState(false);
-  // 新增状态：语言设置（默认为中文）
+  // 语言设置
   const [language, setLanguage] = useState<Language>('zh');
 
   // 异步加载数据
@@ -87,17 +91,23 @@ function App() {
     ? advisors 
     : advisors.filter(advisor => advisor.category === activeCategory);
 
-  // --- 处理函数 ---
+  // --- 交互处理 ---
   
+  // 1. 点击卡片 -> 打开详情页
   const handleSelectAdvisor = (advisor: Advisor) => {
-    console.log("Selected advisor:", advisor.name);
-    alert(`您选择了：${advisor.name}\n(详情页功能开发中...)`);
+    setSelectedAdvisor(advisor);
   };
 
+  // 2. 关闭详情页
+  const handleCloseModal = () => {
+    setSelectedAdvisor(null);
+  };
+
+  // 3. 点击连接 (聊天/通话)
   const handleConnect = (advisor: Advisor, type: ConnectionType) => {
-    console.log("Connect via:", type, "with", advisor.name);
-    // 修复点：这里原来写的是 type === 'chat'，现在改成了 ConnectionType.CHAT
-    alert(`即将与 ${advisor.name} 进行 ${type === ConnectionType.CHAT ? '文字聊天' : '语音通话'}...`);
+    // 暂时先关闭详情页，然后弹窗提示
+    setSelectedAdvisor(null);
+    alert(`正在为您连接 ${advisor.name} (${type === ConnectionType.CHAT ? '文字聊天' : '语音通话'})...\n(支付与实时通信功能开发中)`);
   };
 
   // 加载中界面
@@ -132,8 +142,8 @@ function App() {
                 key={advisor.id} 
                 advisor={advisor}
                 language={language}        
-                onSelect={handleSelectAdvisor} 
-                onConnect={handleConnect}      
+                onSelect={handleSelectAdvisor} // 点击卡片打开详情
+                onConnect={handleConnect}      // 卡片上的直接连接
               />
             ))}
           </div>
@@ -144,6 +154,14 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* 详情页弹窗 (当 selectedAdvisor 不为空时显示) */}
+      <AdvisorModal 
+        advisor={selectedAdvisor}
+        language={language}
+        onClose={handleCloseModal}
+        onConnect={handleConnect}
+      />
 
       {/* 树洞守护者 (Spirit Guide) 悬浮按钮 */}
       {!isGuideOpen && (
