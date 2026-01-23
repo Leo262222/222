@@ -1,4 +1,5 @@
-// --- 核心修复：必须是 export enum ---
+// ✅ 核心修复：将 ConnectionType 定义为枚举 (enum)
+// 这样 Vercel 才能正确识别，构建才会成功！
 export enum ConnectionType {
   CHAT = 'chat',
   VOICE = 'voice',
@@ -45,8 +46,8 @@ export interface Advisor {
   bio: string;
   bio_zh?: string;
   specialties: string[];
-  specialties_zh?: string[]; // 确保这里是 text[] 数组
+  specialties_zh?: string[];
   reviews: Review[];
   certificates?: string[];
-  bookingQrUrl?: string; // 扫码字段
+  bookingQrUrl?: string; 
 }
