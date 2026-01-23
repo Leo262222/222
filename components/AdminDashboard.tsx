@@ -26,7 +26,6 @@ const AdminDashboard = () => {
     fetchAdvisors();
   }, []);
 
-  // 处理删除
   const handleDelete = async (id: string) => {
     if (!window.confirm('确定要删除这位顾问吗？')) return;
     try {
@@ -38,13 +37,30 @@ const AdminDashboard = () => {
     }
   };
 
-  // 打开弹窗
   const openModal = (advisor: Advisor | null = null) => {
-    setEditingAdvisor(advisor ? { ...advisor } : { isOnline: true, pricePerMinute: 1.99, rating: 5 });
+    setEditingAdvisor(advisor ? { ...advisor } : { isOnline: true, pricePerMinute: 1.99, rating: 5, reviewCount: 0 });
     setIsModalOpen(true);
   };
 
-  // 保存数据
+  // ✅ 新增：处理图片上传 (转为 Base64)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // ⚠️ 限制图片大小为 500KB，防止数据库报错
+    if (file.size > 500 * 1024) {
+      alert("图片太大了！为了网站速度，请上传小于 500KB 的图片。\n或者您可以先用微信/QQ截图一下再上传，体积会小很多。");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // 把读取到的图片数据存入状态
+      handleChange('imageUrl', reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAdvisor) return;
@@ -52,20 +68,18 @@ const AdminDashboard = () => {
     try {
       const isEdit = !!editingAdvisor.id;
       
-      // 数据格式处理
       const saveData = {
         ...editingAdvisor,
-        // 确保数组类型正确
         specialties: typeof editingAdvisor.specialties === 'string' 
           ? (editingAdvisor.specialties as string).split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
           : (editingAdvisor.specialties || []),
         specialties_zh: typeof editingAdvisor.specialties_zh === 'string'
           ? (editingAdvisor.specialties_zh as string).split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
           : (editingAdvisor.specialties_zh || []),
-        // 确保数值正确
         pricePerMinute: Number(editingAdvisor.pricePerMinute) || 0,
         yearsExperience: Number(editingAdvisor.yearsExperience) || 1,
         rating: Number(editingAdvisor.rating) || 5,
+        // ✅ 修复：确保 reviewCount 存在，如果没填就默认为 0
         reviewCount: Number(editingAdvisor.reviewCount) || 0,
         isOnline: Boolean(editingAdvisor.isOnline)
       };
@@ -74,12 +88,14 @@ const AdminDashboard = () => {
         const { error } = await supabase.from('advisors').update(saveData).eq('id', editingAdvisor.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('advisors').insert([saveData]);
+        // ID 是自动生成的，插入时不需要
+        const { id, ...insertData } = saveData as any; 
+        const { error } = await supabase.from('advisors').insert([insertData]);
         if (error) throw error;
       }
 
       setIsModalOpen(false);
-      fetchAdvisors(); // 刷新列表
+      fetchAdvisors(); 
     } catch (error: any) {
       console.error('Save error:', error);
       alert('保存失败: ' + error.message);
@@ -181,11 +197,24 @@ const AdminDashboard = () => {
                 </select>
               </div>
 
-              {/* 关键修改：图片不再上传，改为填链接 */}
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-bold mb-1">头像图片链接 (URL)</label>
-                <input type="text" value={editingAdvisor.imageUrl || ''} onChange={e => handleChange('imageUrl', e.target.value)} className="w-full border p-2 rounded text-sm font-mono text-gray-500" placeholder="https://..." />
-                <p className="text-[10px] text-gray-400 mt-1">请填写图片的网址链接，不要直接上传文件。</p>
+              {/* ✅ 改回：本地图片上传 */}
+              <div className="bg-gray-50 p-3 rounded-lg border border-dashed border-gray-300">
+                <label className="block text-xs font-bold mb-2">头像图片 (点击上传)</label>
+                
+                {/* 图片预览 */}
+                {editingAdvisor.imageUrl && (
+                  <div className="mb-2">
+                    <img src={editingAdvisor.imageUrl} alt="预览" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md" />
+                  </div>
+                )}
+                
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleImageUpload} 
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" 
+                />
+                <p className="text-[10px] text-gray-400 mt-1">⚠️ 提示：请上传小于 500KB 的图片，否则可能无法保存。</p>
               </div>
 
               <div className="flex items-center gap-2 pt-2">
