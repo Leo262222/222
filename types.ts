@@ -1,4 +1,4 @@
-// 必须是 export enum，不能是 export type
+// --- 核心修复：必须是 export enum ---
 export enum ConnectionType {
   CHAT = 'chat',
   VOICE = 'voice',
@@ -45,8 +45,8 @@ export interface Advisor {
   bio: string;
   bio_zh?: string;
   specialties: string[];
-  specialties_zh?: string[];
+  specialties_zh?: string[]; // 确保这里是 text[] 数组
   reviews: Review[];
   certificates?: string[];
-  bookingQrUrl?: string;
+  bookingQrUrl?: string; // 扫码字段
 }
