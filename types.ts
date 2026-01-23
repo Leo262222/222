@@ -1,5 +1,3 @@
-// ✅ 核心修复：必须是 export enum
-// 只有改了这个，Vercel 才能构建成功，新后台才能上线！
 export enum ConnectionType {
   CHAT = 'chat',
   VOICE = 'voice',
@@ -33,9 +31,9 @@ export interface ChatMessage {
 export interface Advisor {
   id: string;
   name: string;
-  name_zh?: string;     // 中文名
+  name_zh?: string;
   title: string;
-  title_zh?: string;    // 中文头衔
+  title_zh?: string;
   imageUrl: string;
   category: string;
   pricePerMinute: number;
@@ -44,10 +42,10 @@ export interface Advisor {
   rating: number;
   reviewCount: number;
   bio: string;
-  bio_zh?: string;      // 中文简介
+  bio_zh?: string;
   specialties: string[];
-  specialties_zh?: string[]; // 中文擅长 (数组)
+  specialties_zh?: string[];
   reviews: Review[];
   certificates?: string[];
-  bookingQrUrl?: string; // 扫码图片链接
+  bookingQrUrl?: string;
 }
