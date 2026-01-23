@@ -52,7 +52,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // 4. 打开弹窗 (🛡️ 数据清洗 - 修复 ["xxx"] 显示问题)
+  // 4. 打开弹窗 (🛡️ 数据清洗)
   const openModal = (advisor: Advisor | null = null) => {
     if (advisor) {
       setEditingAdvisor({ ...advisor });
@@ -64,7 +64,7 @@ const AdminDashboard = () => {
       if (Array.isArray(raw)) {
         safeText = raw.join(', ');
       } else if (typeof raw === 'string') {
-        // 清洗 ["xxx"] 格式，防止出现 ["22222"] 这种怪字符
+        // 清洗 ["xxx"] 格式
         const cleaned = (raw as string).replace(/[\[\]"']/g, '');
         safeText = cleaned;
       }
@@ -78,31 +78,25 @@ const AdminDashboard = () => {
         rating: 5, 
         reviewCount: 0,
         yearsExperience: 1,
-        category: 'Tarot'
+        category: 'Tarot',
+        certificates: [] // 初始化证书数组
       });
       setSpecialtiesText('');
     }
     setIsModalOpen(true);
   };
 
-  // 5. 🟢 核心升级：智能图片压缩 (解决 Failed to fetch)
-  // 无论您传多大的图，这里都会把它“瘦身”到 800px 宽，体积骤降 90%，但肉眼看不出区别。
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'imageUrl' | 'bookingQrUrl') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // 创建读取器
+  // 5. 🟢 通用图片压缩 (支持头像、二维码、证书)
+  const processImage = (file: File, callback: (base64: string) => void) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        // 创建画布进行压缩
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
 
-        // 📏 强制缩放：最大宽度或高度不超过 800px
-        // (网页头像 800px 已经是非常非常清晰了，再大就是浪费流量且会导致报错)
+        // 智能压缩：最大边长 800px
         const MAX_DIMENSION = 800;
         if (width > height) {
           if (width > MAX_DIMENSION) {
@@ -118,23 +112,50 @@ const AdminDashboard = () => {
 
         canvas.width = width;
         canvas.height = height;
-
-        // 绘图并压缩
         const ctx = canvas.getContext('2d');
         if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            
-            // 📦 压缩为 JPEG，质量 0.8 (体积会变很小，且兼容性好)
-            // 这就是解决报错的关键！
+            // 0.8 质量的 JPEG
             const dataUrl = canvas.toDataURL('image/jpeg', 0.8); 
-            
-            // 存入状态
-            handleChange(field, dataUrl);
+            callback(dataUrl);
         }
       };
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+  };
+
+  // 处理头像/二维码上传
+  const handleSingleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'imageUrl' | 'bookingQrUrl') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processImage(file, (base64) => handleChange(field, base64));
+  };
+
+  // 🟢 处理证书上传 (追加到数组)
+  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingAdvisor) return;
+
+    const currentCerts = editingAdvisor.certificates || [];
+    if (currentCerts.length >= 5) {
+      alert("最多只能上传 5 张证书！");
+      return;
+    }
+
+    processImage(file, (base64) => {
+      // 追加新图片
+      const updatedCerts = [...currentCerts, base64];
+      setEditingAdvisor(prev => ({ ...prev, certificates: updatedCerts }));
+    });
+  };
+
+  // 🔴 删除某张证书
+  const removeCertificate = (indexToRemove: number) => {
+    if (!editingAdvisor) return;
+    const currentCerts = editingAdvisor.certificates || [];
+    const updatedCerts = currentCerts.filter((_, index) => index !== indexToRemove);
+    setEditingAdvisor(prev => ({ ...prev, certificates: updatedCerts }));
   };
 
   // 6. 保存
@@ -145,7 +166,7 @@ const AdminDashboard = () => {
     try {
       const isEdit = !!editingAdvisor.id;
       
-      // 清洗输入内容 (去掉可能存在的 [" "] 符号)
+      // 清洗输入内容 (去掉符号)
       const cleanInput = specialtiesText.replace(/[\[\]"']/g, ''); 
       const specialtiesArray = cleanInput.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
 
@@ -153,6 +174,9 @@ const AdminDashboard = () => {
       const saveData = {
         ...editingAdvisor,
         
+        // 确保数组存在
+        certificates: editingAdvisor.certificates || [],
+
         // 中英自动填充
         name_zh: editingAdvisor.name_zh,
         title_zh: editingAdvisor.title_zh,
@@ -259,7 +283,7 @@ const AdminDashboard = () => {
       {/* 编辑弹窗 */}
       {isModalOpen && editingAdvisor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
               <h2 className="text-xl font-bold text-gray-800">
                 {editingAdvisor.id ? '编辑顾问' : '添加顾问'}
@@ -272,17 +296,17 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">姓名 (中文)</label>
-                  <input required type="text" value={editingAdvisor.name_zh || ''} onChange={e => handleChange('name_zh', e.target.value)} className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="例如：刘洋" />
+                  <input required autoComplete="off" type="text" value={editingAdvisor.name_zh || ''} onChange={e => handleChange('name_zh', e.target.value)} className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="例如：刘洋" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">头衔/标签</label>
-                  <input type="text" value={editingAdvisor.title_zh || ''} onChange={e => handleChange('title_zh', e.target.value)} className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="例如：资深塔罗师" />
+                  <input type="text" autoComplete="off" value={editingAdvisor.title_zh || ''} onChange={e => handleChange('title_zh', e.target.value)} className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="例如：资深塔罗师" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">个人简介 (详细介绍)</label>
-                <textarea rows={4} value={editingAdvisor.bio_zh || ''} onChange={e => handleChange('bio_zh', e.target.value)} className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm" placeholder="请在这里填写详细的个人经历..." />
+                <textarea rows={4} autoComplete="off" value={editingAdvisor.bio_zh || ''} onChange={e => handleChange('bio_zh', e.target.value)} className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm" placeholder="请在这里填写详细的个人经历..." />
               </div>
 
               <div className="bg-gray-50 p-4 rounded-xl space-y-4">
@@ -290,12 +314,13 @@ const AdminDashboard = () => {
                   <label className="block text-sm font-bold text-gray-700 mb-1">擅长话题 (用逗号分隔)</label>
                   <input 
                     type="text" 
+                    autoComplete="off"
                     value={specialtiesText} 
                     onChange={e => setSpecialtiesText(e.target.value)} 
                     className="w-full border p-2 rounded-lg" 
                     placeholder="例如: 情感复合, 事业发展" 
                   />
-                  <p className="text-xs text-gray-400 mt-1">请只输入文字，不需要输入 [""] 等符号</p>
+                  <p className="text-xs text-gray-400 mt-1">系统会自动把 ["..."] 这种格式修好，您直接输入文字即可。</p>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4">
@@ -321,25 +346,59 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              {/* 🟢 背景认证 / 证书上传区 */}
+              <div className="border border-gray-200 rounded-xl p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <label className="text-sm font-bold text-gray-700">背景认证 (证书/资质)</label>
+                  <span className="text-xs text-gray-400">{(editingAdvisor.certificates || []).length} / 5</span>
+                </div>
+                
+                <div className="grid grid-cols-5 gap-2">
+                  {/* 显示已上传的证书 */}
+                  {(editingAdvisor.certificates || []).map((cert, idx) => (
+                    <div key={idx} className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                      <img src={cert} alt={`Cert ${idx}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeCertificate(idx)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition shadow-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* 上传按钮 (如果不满5张则显示) */}
+                  {(editingAdvisor.certificates || []).length < 5 && (
+                    <label className="flex flex-col items-center justify-center aspect-square border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 hover:border-purple-300 transition">
+                      <span className="text-2xl text-gray-400">+</span>
+                      <span className="text-[10px] text-gray-400 mt-1">上传证书</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleCertificateUpload} />
+                    </label>
+                  )}
+                </div>
+                <p className="text-xs text-red-400 mt-2">* 至少上传 1 张证书，最多 5 张。</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-sm font-bold text-gray-700 mb-2">头像 (支持大图自动压缩)</div>
+                  <div className="text-sm font-bold text-gray-700 mb-2">头像</div>
                   {editingAdvisor.imageUrl ? (
                     <img src={editingAdvisor.imageUrl} alt="Avatar" className="w-16 h-16 rounded-full mx-auto mb-2 object-cover" />
                   ) : (
                     <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-2"></div>
                   )}
-                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'imageUrl')} className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:bg-purple-100 file:text-purple-700" />
+                  <input type="file" accept="image/*" onChange={(e) => handleSingleImageUpload(e, 'imageUrl')} className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:bg-purple-100 file:text-purple-700" />
                 </div>
 
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition">
-                  <div className="text-sm font-bold text-gray-700 mb-2">二维码 (支持大图自动压缩)</div>
+                  <div className="text-sm font-bold text-gray-700 mb-2">预约二维码</div>
                   {editingAdvisor.bookingQrUrl ? (
                     <img src={editingAdvisor.bookingQrUrl} alt="QR" className="w-16 h-16 mx-auto mb-2 object-contain" />
                   ) : (
                     <div className="w-16 h-16 bg-gray-200 mx-auto mb-2 flex items-center justify-center text-xs text-gray-400">无图</div>
                   )}
-                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'bookingQrUrl')} className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:bg-purple-100 file:text-purple-700" />
+                  <input type="file" accept="image/*" onChange={(e) => handleSingleImageUpload(e, 'bookingQrUrl')} className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:bg-purple-100 file:text-purple-700" />
                 </div>
               </div>
 
