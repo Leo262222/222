@@ -1,51 +1,19 @@
+export type CategoryId = string;
 export type Language = 'en' | 'zh';
-
-export interface Category {
-  id: string;
-  name: string; // English Name (used as key)
-  name_zh: string; // Chinese Name
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl: string;
-  balance: number;
-  // New fields for billing logic
-  dailyMessagesCount: number;
-  lastMessageDate: string; // ISO Date string for checking "today"
-  hasPaymentMethod: boolean;
-}
+export type ConnectionType = 'chat' | 'voice' | 'video';
 
 export interface Review {
   id: string;
   user: string;
   rating: number;
-  comment: string;
   date: string;
+  comment: string;
 }
 
-export interface Advisor {
+export interface Category {
   id: string;
   name: string;
-  name_zh?: string;
-  title: string;
-  title_zh?: string;
-  category: string; // Stored as English Key (Category.name)
-  imageUrl: string;
-  rating: number;
-  reviewCount: number;
-  pricePerMinute: number;
-  isOnline: boolean;
-  specialties: string[];
-  specialties_zh?: string[];
-  bio: string;
-  bio_zh?: string;
-  reviews: Review[];
-  yearsExperience: number;
-  certificates: string[]; // List of image URLs for certificates
-  bookingQrUrl?: string; // New: CS/Booking QR Code URL
+  name_zh: string;
 }
 
 export interface ChatMessage {
@@ -55,8 +23,25 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export enum ConnectionType {
-  CHAT = 'CHAT',
-  VOICE = 'VOICE',
-  VIDEO = 'VIDEO'
+export interface Advisor {
+  id: string;
+  name: string;
+  name_zh?: string;
+  title: string;
+  title_zh?: string;
+  imageUrl: string;
+  category: string;
+  pricePerMinute: number;
+  isOnline: boolean;
+  yearsExperience: number;
+  rating: number;
+  reviewCount: number;
+  bio: string;
+  bio_zh?: string;
+  specialties: string[];
+  specialties_zh?: string[];
+  reviews: Review[];
+  certificates?: string[];
+  // --- 新增这个字段，否则会报错 ---
+  bookingQrUrl?: string; 
 }
