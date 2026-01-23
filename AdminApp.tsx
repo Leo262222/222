@@ -1,112 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
-import { Advisor, Category } from './types';
-import { dataService } from './services/dataService';
+import { supabase } from './supabaseClient';
 
-const AdminApp: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
-  const [advisors, setAdvisors] = useState<Advisor[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // 从云端加载数据
-  const loadData = async () => {
-    setLoading(true);
-    try {
-        const fetchedAdvisors = await dataService.getAdvisors();
-        const fetchedCategories = await dataService.getCategories();
-        setAdvisors(fetchedAdvisors);
-        setCategories(fetchedCategories);
-    } catch (error) {
-        console.error("加载数据出错", error);
-        alert("连接数据库失败，请刷新重试。");
-    } finally {
-        setLoading(false);
-    }
-  };
+function AdminApp() {
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated) {
-        loadData();
-    }
-  }, [isAuthenticated]);
+    // 1. 初始化时检查有没有登录
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-  const handleUpdateAdvisor = async (updatedAdvisor: Advisor) => {
-    try {
-        await dataService.updateAdvisor(updatedAdvisor);
-        await loadData(); 
-    } catch (e) { alert("更新失败: " + e); }
-  };
+    // 2. 监听登录状态变化 (登录/登出)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
 
-  const handleAddAdvisor = async (newAdvisor: Advisor) => {
-    try {
-        await dataService.addAdvisor(newAdvisor);
-        await loadData();
-    } catch (e) { alert("添加失败: " + e); }
-  };
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const handleDeleteAdvisor = async (id: string) => {
-    if(!window.confirm("确定要删除吗？")) return;
-    try {
-        await dataService.deleteAdvisor(id);
-        await loadData();
-    } catch (e) { alert("删除失败: " + e); }
-  };
-
-  const handleAddCategory = async (newCategory: Category) => {
-     try {
-        await dataService.addCategory(newCategory);
-        await loadData();
-     } catch (e) { alert("添加分类失败: " + e); }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-     if(!window.confirm("确定要删除此分类吗？")) return;
-     try {
-        await dataService.deleteCategory(id);
-        await loadData();
-     } catch (e) { alert("删除分类失败: " + e); }
-  };
-
-  const handleUpdateCategory = async (updatedCategory: Category) => {
-     try {
-        await dataService.updateCategory(updatedCategory);
-        await loadData();
-     } catch (e) { alert("更新分类失败: " + e); }
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-  };
-
-  if (!isAuthenticated) {
-    return <AdminLogin onLogin={() => setIsAuthenticated(true)} />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500 font-medium">
+        Loading...
+      </div>
+    );
   }
 
-  if (loading && advisors.length === 0 && categories.length === 0) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-600 font-bold">
-            正在连接云端数据库...
-        </div>
-      );
-  }
-
+  // 核心修改：不再给 AdminDashboard 传任何参数
+  // 因为 AdminDashboard 现在已经能够自己获取数据了
   return (
-    <AdminDashboard 
-      advisors={advisors}
-      categories={categories}
-      language="zh"
-      onUpdateAdvisor={handleUpdateAdvisor}
-      onAddAdvisor={handleAddAdvisor}
-      onDeleteAdvisor={handleDeleteAdvisor}
-      onAddCategory={handleAddCategory}
-      onDeleteCategory={handleDeleteCategory}
-      onUpdateCategory={handleUpdateCategory}
-      onExit={handleLogout}
-    />
+    <div className="antialiased text-gray-900 bg-gray-100 min-h-screen">
+      {session ? <AdminDashboard /> : <AdminLogin />}
+    </div>
   );
-};
+}
 
 export default AdminApp;
