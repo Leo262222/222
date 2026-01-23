@@ -1,4 +1,5 @@
-// 🔴 核心修复：必须使用 export enum，否则 Vercel 永远无法构建成功！
+// ✅ 核心修复：必须是 export enum
+// 只有改了这个，Vercel 才能构建成功，新后台才能上线！
 export enum ConnectionType {
   CHAT = 'chat',
   VOICE = 'voice',
