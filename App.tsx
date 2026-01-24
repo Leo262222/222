@@ -18,8 +18,8 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // ✅ 新增状态：用于追踪当前点击查看的大图证书地址
+  
+  // 图片放大查看状态
   const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
 
   // 1. 获取顾问数据
@@ -61,26 +61,38 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
       
-      {/* 顶部导航 */}
-      <header className="bg-[#1a202c] text-white py-6 px-4 shadow-lg sticky top-0 z-40">
+      {/* 1. 顶部悬浮导航 (Sticky Navbar) */}
+      <nav className="bg-[#1a202c] text-white py-4 px-4 shadow-md sticky top-0 z-40 border-b border-gray-800">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🌲</span>
-              <h1 className="text-xl font-bold tracking-wide">留子树洞</h1>
-            </div>
-            <p className="text-xs text-gray-400 mt-1 pl-9">树洞藏秘密，神谕断情关。</p>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🌲</span>
+            <h1 className="text-lg font-bold tracking-wide">留子树洞</h1>
           </div>
-          <div className="text-right">
-             <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+          <div className="text-right flex items-center gap-2">
+             <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
              <span className="text-xs font-medium text-green-400">{advisors.filter(a => a.isOnline).length} 人在线</span>
           </div>
         </div>
-      </header>
+      </nav>
 
-      {/* 分类栏 */}
-      <div className="max-w-4xl mx-auto px-4 mt-6">
-        <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
+      {/* 2. 英雄区 (Hero Section) - 简介加回来了！ */}
+      <div className="bg-[#1a202c] text-white pt-2 pb-8 px-4 shadow-lg mb-6">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold mb-4 tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-purple-200 to-white">
+            树洞藏秘密，神谕断情关。
+          </h2>
+          <p className="text-sm text-gray-400 leading-relaxed max-w-2xl text-justify">
+            留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是深夜的孤独，连线懂你的玄学导师，将异乡秘密化为指引情路的答案。
+          </p>
+        </div>
+      </div>
+
+      {/* 3. 分类栏 */}
+      <div className="max-w-4xl mx-auto px-4 -mt-4 mb-6 relative z-10">
+        <div className="bg-white p-2 rounded-xl shadow-md border border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
           {categories.map(cat => (
             <button
               key={cat.id}
@@ -97,8 +109,8 @@ function App() {
         </div>
       </div>
 
-      {/* 列表区 */}
-      <main className="max-w-4xl mx-auto px-4 mt-6">
+      {/* 4. 列表区 */}
+      <main className="max-w-4xl mx-auto px-4">
         {loading ? (
           <div className="text-center py-20 text-gray-400">加载神谕中...</div>
         ) : (
@@ -162,7 +174,7 @@ function App() {
         )}
       </main>
 
-      {/* 顾问详情弹窗 */}
+      {/* 5. 弹窗区 */}
       {selectedAdvisor && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div 
@@ -245,7 +257,6 @@ function App() {
                         <img 
                           src={cert} 
                           alt="Certificate" 
-                          // ✅ 修改点：点击时设置当前选中的证书图片地址，而不是打开新窗口
                           className="h-24 w-auto rounded-lg border border-gray-200 shadow-sm object-cover cursor-zoom-in hover:opacity-90 transition"
                           onClick={() => setSelectedCertificate(cert)}
                         />
@@ -276,14 +287,13 @@ function App() {
         </div>
       )}
 
-      {/* ✅ 新增：全屏图片查看弹窗 (Z-index 必须比顾问详情弹窗高) */}
+      {/* 6. 全屏图片查看器 */}
       {selectedCertificate && (
         <div 
-          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
-          onClick={() => setSelectedCertificate(null)} // 点击背景或图片关闭
+          className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setSelectedCertificate(null)}
         >
-          {/* 关闭按钮（可选，增加易用性） */}
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/20 rounded-full p-1">
+          <button className="absolute top-6 right-6 text-white/50 hover:text-white transition">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
