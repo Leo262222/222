@@ -208,3 +208,104 @@ function App() {
                     <div className="text-xs text-gray-400">从业经验</div>
                   </div>
                   <div className="w-px bg-gray-200 h-10"></div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-gray-900">{selectedAdvisor.rating}</div>
+                    <div className="text-xs text-gray-400">评分</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 关于我 */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">关于我</h4>
+                <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
+                  {selectedAdvisor.bio_zh || "这位顾问很神秘，暂时没有留下简介。"}
+                </p>
+              </div>
+
+              {/* 擅长话题 */}
+              {getSafeTags(selectedAdvisor.specialties_zh).length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">擅长话题</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {getSafeTags(selectedAdvisor.specialties_zh).map((tag, idx) => (
+                      <span 
+                        key={idx} 
+                        className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold shadow-sm"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 背景认证 */}
+              {(selectedAdvisor.certificates || []).length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">背景认证</h4>
+                  <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+                    {selectedAdvisor.certificates?.map((cert, idx) => (
+                      <div key={idx} className="flex-shrink-0 snap-center">
+                        <img 
+                          src={cert} 
+                          alt="Certificate" 
+                          className="h-24 w-auto rounded-lg border border-gray-200 shadow-sm object-cover cursor-zoom-in hover:opacity-90 transition"
+                          onClick={() => setSelectedCertificate(cert)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400">已通过平台资质审核，点击可查看大图</p>
+                </div>
+              )}
+
+              {/* 底部操作 */}
+              <div className="pt-4 mt-4 border-t border-gray-100">
+                 {selectedAdvisor.bookingQrUrl ? (
+                   <div className="text-center bg-purple-50 rounded-xl p-6 border border-purple-100">
+                     <p className="text-sm font-bold text-purple-900 mb-3">扫描二维码，立即联系</p>
+                     <img src={selectedAdvisor.bookingQrUrl} className="w-40 h-40 mx-auto rounded-lg shadow-sm mix-blend-multiply" alt="QR Code"/>
+                     <p className="text-xs text-purple-400 mt-3">添加时请注明来源</p>
+                   </div>
+                 ) : (
+                   <div className="text-center py-6 bg-gray-50 rounded-xl text-gray-400 text-sm">
+                     暂无联系方式，请私信平台客服。
+                   </div>
+                 )}
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 全屏图片查看 */}
+      {selectedCertificate && (
+        <div 
+          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setSelectedCertificate(null)} 
+        >
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/20 rounded-full p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <img 
+            src={selectedCertificate} 
+            alt="Full Certificate" 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-zoom-in"
+          />
+        </div>
+      )}
+
+      {/* 版权 */}
+      <footer className="text-center text-gray-300 text-[10px] py-8">
+        <p>© 2026 Liuzi Tree Hollow. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
