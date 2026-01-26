@@ -102,7 +102,7 @@ function App() {
       {/* 列表区 */}
       <main className="max-w-4xl mx-auto px-4 mt-6">
         {loading ? (
-          <div className="text-center py-20 text-gray-400">加载神谕中...</div>
+          <div className="text-center py-20 text-gray-400">老师加载中...</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredAdvisors.map(advisor => {
@@ -263,7 +263,7 @@ function App() {
                    <div className="text-center bg-purple-50 rounded-xl p-6 border border-purple-100">
                      <p className="text-sm font-bold text-purple-900 mb-3">扫描二维码，立即联系</p>
                      <img src={selectedAdvisor.bookingQrUrl} className="w-40 h-40 mx-auto rounded-lg shadow-sm mix-blend-multiply" alt="QR Code"/>
-                     <p className="text-xs text-purple-400 mt-3">添加时请注明来源</p>
+                     <p className="text-xs text-purple-400 mt-3">添加时请注明连线老师</p>
                    </div>
                  ) : (
                    <div className="text-center py-6 bg-gray-50 rounded-xl text-gray-400 text-sm">
