@@ -13,26 +13,49 @@ const getSafeTags = (input: any): string[] => {
   return [];
 };
 
+// 定义分类结构
+interface CategoryItem {
+  id: number;
+  value: string;
+  label: string;
+}
+
 function App() {
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]); // ✅ 必须有这个状态
+  
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
   const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. 获取顾问数据
+  // 1. 获取数据 (顾问 + 分类)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const { data: advisorsData, error } = await supabase
+        // A. 获取顾问
+        const { data: advisorsData, error: advError } = await supabase
           .from('advisors')
           .select('*')
           .order('isOnline', { ascending: false })
           .order('rating', { ascending: false });
 
-        if (error) throw error;
+        if (advError) throw advError;
         setAdvisors(advisorsData || []);
+
+        // B. ✅ 获取分类 (并加上 'All' 选项)
+        const { data: catData, error: catError } = await supabase
+          .from('categories')
+          .select('*')
+          .order('id', { ascending: true });
+        
+        if (catError) throw catError;
+        
+        // 构造完整分类列表 (默认加上全部)
+        const allCat: CategoryItem = { id: 0, value: 'All', label: '全部' };
+        setCategories([allCat, ...(catData || [])]);
+
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -42,23 +65,13 @@ function App() {
     fetchData();
   }, []);
 
-  // 2. 🔴 筛选逻辑 (升级版：支持多选分类)
-  // 如果老师的 category 字段里包含当前选中的页签，就显示
+  // 2. 筛选逻辑
   const filteredAdvisors = selectedCategory === 'All' 
     ? advisors 
     : advisors.filter(a => {
-        const categories = (a.category || '').split(','); // "Tarot,Love" -> ["Tarot", "Love"]
-        return categories.includes(selectedCategory);
+        const cats = (a.category || '').split(','); 
+        return cats.includes(selectedCategory);
       });
-
-  const categories = [
-    { id: 'All', label: '全部' },
-    { id: 'Tarot', label: '塔罗, 雷诺曼' },
-    { id: 'Astrology', label: '占星' },
-    { id: 'Love', label: '情感咨询' },
-    { id: 'Career', label: '事业学业' },
-    { id: 'Life Abroad', label: '海外生活' }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
@@ -80,20 +93,22 @@ function App() {
         </div>
       </header>
 
-      {/* 分类栏 */}
+      {/* 分类栏 (动态渲染) */}
       <div className="max-w-4xl mx-auto px-4 mt-6">
         <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
+          {/* ✅ 这里的 categories 必须是从数据库读出来的 */}
           {categories.map(cat => (
             <button
               key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
+              onClick={() => setSelectedCategory(cat.value)}
               className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${
-                selectedCategory === cat.id 
+                selectedCategory === cat.value 
                   ? 'bg-purple-900 text-white shadow-md' 
                   : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
               }`}
             >
-              {cat.label}
+              {/* 只显示中文名，去掉括号里的英文 */}
+              {cat.label.includes('(') ? cat.label.split('(')[0] : cat.label}
             </button>
           ))}
         </div>
@@ -102,7 +117,7 @@ function App() {
       {/* 列表区 */}
       <main className="max-w-4xl mx-auto px-4 mt-6">
         {loading ? (
-          <div className="text-center py-20 text-gray-400">老师加载中...</div>
+          <div className="text-center py-20 text-gray-400">加载神谕中...</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredAdvisors.map(advisor => {
@@ -263,7 +278,7 @@ function App() {
                    <div className="text-center bg-purple-50 rounded-xl p-6 border border-purple-100">
                      <p className="text-sm font-bold text-purple-900 mb-3">扫描二维码，立即联系</p>
                      <img src={selectedAdvisor.bookingQrUrl} className="w-40 h-40 mx-auto rounded-lg shadow-sm mix-blend-multiply" alt="QR Code"/>
-                     <p className="text-xs text-purple-400 mt-3">添加时请注明连线老师</p>
+                     <p className="text-xs text-purple-400 mt-3">添加时请注明来源</p>
                    </div>
                  ) : (
                    <div className="text-center py-6 bg-gray-50 rounded-xl text-gray-400 text-sm">
