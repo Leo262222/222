@@ -28,15 +28,13 @@ function App() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // ✅ 新增状态：检测页面是否发生了滚动
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    // 1. 数据加载逻辑 (保持不变)
     const fetchData = async () => {
       try {
         setLoading(true);
+        // 只取必要字段
         const { data: advisorsData, error: advError } = await supabase
           .from('advisors')
           .select('id, name_zh, title_zh, imageUrl, isOnline, rating, pricePerMinute, yearsExperience, specialties_zh, category')
@@ -63,19 +61,15 @@ function App() {
     };
     fetchData();
 
-    // 2. ✅ 新增：极速滚动监听器
+    // 滚动监听 (仅影响移动端头部样式)
     const handleScroll = () => {
-      // 当滚动超过 20px 时，认为是“正在浏览”，收起头部
       if (window.scrollY > 20) {
         setIsScrolled(true);
       } else {
         setIsScrolled(false);
       }
     };
-
-    // 添加监听
     window.addEventListener('scroll', handleScroll);
-    // 清理监听
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -108,22 +102,17 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
       
-      {/* 🟢 动态头部核心区域 
-          sticky top-0: 确保头部吸顶
-          transition-all: 保证变化时的丝滑动画
-      */}
+      {/* 头部 (保持之前的逻辑) */}
       <header className={`bg-[#1a202c] text-white px-4 shadow-lg sticky top-0 z-40 transition-all duration-300 ease-in-out ${
-        isScrolled ? 'py-3' : 'py-6' // 滚动时减少上下内边距
+        isScrolled ? 'py-3' : 'py-6'
       }`}>
-        <div className="max-w-4xl mx-auto">
-          {/* Logo 栏 - 永远显示，但滚动时微调边距 */}
+        <div className="max-w-6xl mx-auto"> {/* 修改容器宽度为 6xl 以适应 Web 大屏 */}
           <div className={`flex justify-between items-center transition-all duration-300 ${isScrolled ? 'mb-0' : 'mb-3'}`}>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🌲</span>
                 <h1 className="text-xl font-bold tracking-wide">留子树洞</h1>
               </div>
-              {/* 副标题：滚动时隐藏 */}
               <p className={`text-xs text-gray-400 mt-1 pl-9 transition-all duration-300 overflow-hidden ${
                 isScrolled ? 'h-0 opacity-0' : 'h-auto opacity-100'
               }`}>
@@ -132,11 +121,6 @@ function App() {
             </div>
           </div>
 
-          {/* 🟢 Slogan 区域 
-             核心逻辑：
-             1. 移动端 (默认)：根据 isScrolled 状态切换高度 (max-h-0 vs max-h-40) 和透明度。
-             2. PC端 (md:前缀)：强制覆盖为永远显示 (max-h-full opacity-100)。
-          */}
           <div className={`
             bg-white/5 rounded-lg border border-white/10 text-xs sm:text-sm text-gray-300 leading-relaxed shadow-inner overflow-hidden transition-all duration-500 ease-in-out
             ${isScrolled ? 'max-h-0 opacity-0 mt-0 border-none' : 'max-h-40 opacity-100 mt-2 p-3 border'}
@@ -147,8 +131,8 @@ function App() {
         </div>
       </header>
 
-      {/* 分类栏 (吸顶时紧贴 Header) */}
-      <div className="max-w-4xl mx-auto px-4 mt-4 sticky top-[60px] z-30 transition-all"> 
+      {/* 分类栏 */}
+      <div className="max-w-6xl mx-auto px-4 mt-4 sticky top-[60px] z-30 transition-all"> 
         <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
           {categories.map(cat => (
             <button
@@ -167,58 +151,98 @@ function App() {
       </div>
 
       {/* 列表区 */}
-      <main className="max-w-4xl mx-auto px-4 mt-4">
+      <main className="max-w-6xl mx-auto px-4 mt-6">
         {loading ? (
           <div className="text-center py-20 text-gray-400">
             <p className="animate-pulse">✨ 正在连接宇宙能量...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          /* 🔴 核心改动：
+            Web端 (md以上): grid-cols-3 (三列大卡片)
+            手机端 (默认): grid-cols-1 (单列小卡片)
+          */
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
             {filteredAdvisors.map(advisor => {
               const safeTags = getSafeTags(advisor.specialties_zh);
               return (
                 <div 
                   key={advisor.id}
                   onClick={() => handleCardClick(advisor)}
-                  className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer flex gap-4 items-start relative overflow-hidden"
+                  /* 🔴 核心改动：卡片布局
+                     手机端: flex-row (横向，左图右文)
+                     Web端: flex-col (纵向，上图下文，文字居中) + 增加内边距 p-6
+                  */
+                  className="group bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-row md:flex-col items-start md:items-center md:text-center gap-4 md:gap-6 relative overflow-hidden"
                 >
-                  <div className="relative flex-shrink-0">
+                  
+                  {/* 头像区域 */}
+                  <div className="relative shrink-0">
+                    {/* 🔴 核心改动：头像尺寸
+                       手机端: w-16 (小)
+                       Web端: w-32 (超大，像 KEEN 那样)
+                    */}
                     <img 
                       src={advisor.imageUrl} 
                       alt={advisor.name_zh} 
-                      className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm bg-gray-100"
+                      className="w-16 h-16 md:w-32 md:h-32 rounded-full object-cover border-2 border-white shadow-md bg-gray-100 group-hover:scale-105 transition-transform duration-500"
                       loading="lazy"
                     />
+                    {/* 在线状态点 (仅 Web 端显示在头像旁，手机端已移除) */}
+                    {advisor.isOnline && (
+                      <div className="hidden md:block absolute bottom-2 right-2 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>
+                    )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-lg font-bold text-gray-900 truncate pr-2">
+                  {/* 信息区域 */}
+                  <div className="flex-1 min-w-0 w-full flex flex-col md:items-center">
+                    
+                    {/* 第一行：名字 & 评分 */}
+                    <div className="flex md:flex-col justify-between md:justify-center items-start md:items-center w-full mb-1 md:mb-3">
+                      <h3 className="text-lg md:text-2xl font-bold text-gray-900 truncate">
                         {advisor.name_zh || advisor.name}
                       </h3>
-                      <div className="flex items-center text-yellow-500 text-xs font-bold bg-yellow-50 px-1.5 py-0.5 rounded">
+                      
+                      {/* Web端：评分显示在名字下方 */}
+                      <div className="flex items-center text-yellow-500 text-xs md:text-sm font-bold bg-yellow-50 px-2 py-0.5 rounded md:mt-2">
                         <span>★ {advisor.rating}</span>
+                        <span className="text-gray-400 font-normal ml-1">({advisor.yearsExperience}年经验)</span>
                       </div>
                     </div>
                     
-                    <p className="text-xs text-purple-600 font-medium mt-0.5 mb-2 truncate">
+                    {/* 头衔 */}
+                    <p className="text-xs md:text-base text-gray-500 font-medium mb-2 md:mb-4 truncate">
                       {advisor.title_zh || advisor.title}
                     </p>
 
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {safeTags.slice(0, 2).map((tag, i) => (
-                        <span key={i} className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                    {/* 标签 (Web端显示更多) */}
+                    <div className="flex flex-wrap gap-1.5 mb-3 md:justify-center">
+                      {safeTags.slice(0, 3).map((tag, i) => (
+                        <span key={i} className="text-[10px] md:text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-100">
                           {tag}
                         </span>
                       ))}
                     </div>
 
-                    <div className="flex justify-between items-center border-t border-gray-50 pt-3">
-                      <span className="text-xs font-bold text-gray-400">
-                        经验 {advisor.yearsExperience} 年
-                      </span>
-                      <span className="text-sm font-bold text-gray-900">
-                        $ {advisor.pricePerMinute}<span className="text-xs font-normal text-gray-400">/分</span>
+                    {/* 底部：价格 & 按钮 */}
+                    <div className="flex md:flex-col justify-between items-center w-full border-t md:border-t-0 border-gray-50 pt-3 md:pt-0 mt-auto">
+                      {/* 价格 */}
+                      <div className="md:mb-4">
+                        <span className="text-sm md:text-3xl font-bold text-gray-900">
+                          $ {advisor.pricePerMinute}
+                        </span>
+                        <span className="text-xs md:text-sm text-gray-400"> / 分钟</span>
+                      </div>
+
+                      {/* 🔴 Web端专属大按钮 (仿 KEEN 风格) */}
+                      <div className="hidden md:block w-full">
+                        <button className="w-full bg-[#10B981] hover:bg-[#059669] text-white font-bold py-3 rounded-xl shadow-lg shadow-green-100 transition-colors flex items-center justify-center gap-2">
+                           <span className="text-xl">📞</span> 立即连线
+                        </button>
+                      </div>
+
+                      {/* 手机端仅显示经验 (保持原样) */}
+                      <span className="md:hidden text-xs font-bold text-gray-400">
+                        {advisor.yearsExperience} 年经验
                       </span>
                     </div>
                   </div>
@@ -229,7 +253,7 @@ function App() {
         )}
       </main>
 
-      {/* 顾问详情弹窗 */}
+      {/* 弹窗 (保持不变) */}
       {selectedAdvisor && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div 
@@ -238,7 +262,6 @@ function App() {
           ></div>
           
           <div className="relative bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto animate-slide-up">
-            
             <div className="sticky top-0 bg-white/95 backdrop-blur z-10 border-b px-6 py-4 flex justify-between items-center">
               <h3 className="font-bold text-lg">顾问详情</h3>
               <button 
@@ -304,7 +327,6 @@ function App() {
 
               <div className="space-y-3">
                 <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">背景认证</h4>
-                
                 {detailsLoading ? (
                    <div className="flex gap-3 overflow-hidden">
                      {[1,2].map(i => <div key={i} className="h-24 w-32 bg-gray-100 rounded-lg animate-pulse"></div>)}
@@ -345,7 +367,6 @@ function App() {
                    </div>
                  )}
               </div>
-
             </div>
           </div>
         </div>
@@ -361,7 +382,6 @@ function App() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-
           <img 
             src={selectedCertificate} 
             alt="Full Certificate" 
