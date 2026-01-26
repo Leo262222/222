@@ -86,7 +86,7 @@ function App() {
 
           {/* ✅ 已恢复 Slogan (带一点透明背景，更精致) */}
           <div className="mt-2 bg-white/5 p-3 rounded-lg border border-white/10 text-xs sm:text-sm text-gray-300 leading-relaxed shadow-inner">
-            留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是深夜的孤独，连线懂你的玄学老师，将异乡的秘密化为指引情路的灯塔。
+            异乡留学生们的专属情感避树洞。无论是异地恋的煎熬、无法言说的Crush、还是亲朋关系与血液工作的迷茫，连线懂你的玄学老师，将异乡的秘密化为指引情路的灯塔。
           </div>
         </div>
       </header>
