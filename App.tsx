@@ -25,17 +25,24 @@ function App() {
   
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
+  
+  // 新增：专门控制“详情数据”的加载状态
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // 获取顾问
+        
+        // 🚀 核心优化 1：只取首页需要的轻量字段！
+        // ❌ 以前：.select('*')  <-- 这把巨大的证书和二维码都拿回来了
+        // ✅ 现在：明确指定字段，排除 certificates, bookingQrUrl, bio_zh
         const { data: advisorsData, error: advError } = await supabase
           .from('advisors')
-          .select('*')
+          .select('id, name_zh, title_zh, imageUrl, isOnline, rating, pricePerMinute, yearsExperience, specialties_zh, category')
           .order('rating', { ascending: false });
 
         if (advError) throw advError;
@@ -61,6 +68,31 @@ function App() {
     fetchData();
   }, []);
 
+  // 🚀 核心优化 2：点击卡片时，才去加载“重型数据”
+  const handleCardClick = async (advisor: Advisor) => {
+    // 先把已有的轻量信息显示出来，让用户感觉“立刻打开了”
+    setSelectedAdvisor(advisor);
+    setDetailsLoading(true);
+
+    try {
+      // 悄悄去后台补全这个人的详细资料 (证书、二维码、详细简介)
+      const { data, error } = await supabase
+        .from('advisors')
+        .select('bio_zh, bookingQrUrl, certificates') // 只查缺少的重字段
+        .eq('id', advisor.id)
+        .single();
+
+      if (!error && data) {
+        // 把新查到的详情合并进去
+        setSelectedAdvisor(prev => prev ? { ...prev, ...data } : null);
+      }
+    } catch (err) {
+      console.error("加载详情失败", err);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
   const filteredAdvisors = selectedCategory === 'All' 
     ? advisors 
     : advisors.filter(a => {
@@ -84,9 +116,8 @@ function App() {
             </div>
           </div>
 
-          {/* ✅ 已恢复 Slogan (带一点透明背景，更精致) */}
           <div className="mt-2 bg-white/5 p-3 rounded-lg border border-white/10 text-xs sm:text-sm text-gray-300 leading-relaxed shadow-inner">
-            留子们的专属情感树洞。无论是异地恋的煎熬、无法言说的Crush、还是亲朋关系&学业工作的迷茫，连线懂你的玄学老师，将异乡的秘密化为指引情路的灯塔。
+            留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是深夜的孤独，连线懂你的玄学导师，将异乡秘密化为指引情路的答案。
           </div>
         </div>
       </header>
@@ -113,7 +144,9 @@ function App() {
       {/* 列表区 */}
       <main className="max-w-4xl mx-auto px-4 mt-6">
         {loading ? (
-          <div className="text-center py-20 text-gray-400">加载中...</div>
+          <div className="text-center py-20 text-gray-400">
+            <p className="animate-pulse">✨ 正在连接宇宙能量...</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredAdvisors.map(advisor => {
@@ -121,7 +154,8 @@ function App() {
               return (
                 <div 
                   key={advisor.id}
-                  onClick={() => setSelectedAdvisor(advisor)}
+                  // ✅ 修改点：点击触发按需加载
+                  onClick={() => handleCardClick(advisor)}
                   className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer flex gap-4 items-start relative overflow-hidden"
                 >
                   <div className="relative flex-shrink-0">
@@ -129,6 +163,7 @@ function App() {
                       src={advisor.imageUrl} 
                       alt={advisor.name_zh} 
                       className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm bg-gray-100"
+                      loading="lazy" // 浏览器原生懒加载
                     />
                   </div>
 
@@ -220,9 +255,14 @@ function App() {
               {/* 关于我 */}
               <div className="space-y-3">
                 <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">关于我</h4>
-                <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
-                  {selectedAdvisor.bio_zh || "这位顾问很神秘，暂时没有留下简介。"}
-                </p>
+                <div className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl min-h-[60px]">
+                  {/* 如果简介还没加载出来，显示加载动画 */}
+                  {detailsLoading && !selectedAdvisor.bio_zh ? (
+                    <span className="text-gray-400 animate-pulse">正在读取神谕信息...</span>
+                  ) : (
+                    selectedAdvisor.bio_zh || "这位顾问很神秘，暂时没有留下简介。"
+                  )}
+                </div>
               </div>
 
               {/* 擅长话题 */}
@@ -242,10 +282,15 @@ function App() {
                 </div>
               )}
 
-              {/* 背景认证 */}
-              {(selectedAdvisor.certificates || []).length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">背景认证</h4>
+              {/* 背景认证 (只在加载完成后显示) */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">背景认证</h4>
+                
+                {detailsLoading ? (
+                   <div className="flex gap-3 overflow-hidden">
+                     {[1,2].map(i => <div key={i} className="h-24 w-32 bg-gray-100 rounded-lg animate-pulse"></div>)}
+                   </div>
+                ) : (selectedAdvisor.certificates || []).length > 0 ? (
                   <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
                     {selectedAdvisor.certificates?.map((cert, idx) => (
                       <div key={idx} className="flex-shrink-0 snap-center">
@@ -258,13 +303,20 @@ function App() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-gray-400">已通过平台资质审核，点击可查看大图</p>
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-gray-400">暂无公开证书</p>
+                )}
+                <p className="text-[10px] text-gray-400">已通过平台资质审核，点击可查看大图</p>
+              </div>
 
               {/* 底部操作 */}
               <div className="pt-4 mt-4 border-t border-gray-100">
-                 {selectedAdvisor.bookingQrUrl ? (
+                 {/* 加载中或有二维码时显示 */}
+                 {detailsLoading ? (
+                    <div className="text-center bg-gray-50 rounded-xl p-6 h-40 flex items-center justify-center animate-pulse text-gray-400 text-xs">
+                      加载联系方式...
+                    </div>
+                 ) : selectedAdvisor.bookingQrUrl ? (
                    <div className="text-center bg-purple-50 rounded-xl p-6 border border-purple-100">
                      <p className="text-sm font-bold text-purple-900 mb-3">扫描二维码，立即联系</p>
                      <img src={selectedAdvisor.bookingQrUrl} className="w-40 h-40 mx-auto rounded-lg shadow-sm mix-blend-multiply" alt="QR Code"/>
