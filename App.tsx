@@ -26,27 +26,28 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
   
-  // 新增：专门控制“详情数据”的加载状态
+  // 状态：控制详情加载
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
 
+  // 1. 初始化加载 (只取轻量数据)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // 🚀 核心优化 1：只取首页需要的轻量字段！
-        // ❌ 以前：.select('*')  <-- 这把巨大的证书和二维码都拿回来了
-        // ✅ 现在：明确指定字段，排除 certificates, bookingQrUrl, bio_zh
+        // 🚀 极速优化：只取首页需要的字段 (排除 heavy data)
         const { data: advisorsData, error: advError } = await supabase
           .from('advisors')
           .select('id, name_zh, title_zh, imageUrl, isOnline, rating, pricePerMinute, yearsExperience, specialties_zh, category')
           .order('rating', { ascending: false });
 
         if (advError) throw advError;
-        setAdvisors(advisorsData || []);
+        
+        // ✅ 修复报错关键点：加 "as any" 绕过类型检查
+        setAdvisors((advisorsData as any) || []);
 
         // 获取分类
         const { data: catData, error: catError } = await supabase
@@ -68,31 +69,30 @@ function App() {
     fetchData();
   }, []);
 
-  // 🚀 核心优化 2：点击卡片时，才去加载“重型数据”
+  // 2. 点击卡片时，按需加载详情 (证书、二维码)
   const handleCardClick = async (advisor: Advisor) => {
-    // 先把已有的轻量信息显示出来，让用户感觉“立刻打开了”
     setSelectedAdvisor(advisor);
     setDetailsLoading(true);
 
     try {
-      // 悄悄去后台补全这个人的详细资料 (证书、二维码、详细简介)
       const { data, error } = await supabase
         .from('advisors')
-        .select('bio_zh, bookingQrUrl, certificates') // 只查缺少的重字段
+        .select('bio_zh, bookingQrUrl, certificates')
         .eq('id', advisor.id)
         .single();
 
       if (!error && data) {
-        // 把新查到的详情合并进去
+        // 合并详情数据
         setSelectedAdvisor(prev => prev ? { ...prev, ...data } : null);
       }
     } catch (err) {
-      console.error("加载详情失败", err);
+      console.error("Failed to load details", err);
     } finally {
       setDetailsLoading(false);
     }
   };
 
+  // 3. 筛选逻辑
   const filteredAdvisors = selectedCategory === 'All' 
     ? advisors 
     : advisors.filter(a => {
@@ -116,6 +116,7 @@ function App() {
             </div>
           </div>
 
+          {/* ✅ 官方指定 Slogan (已恢复) */}
           <div className="mt-2 bg-white/5 p-3 rounded-lg border border-white/10 text-xs sm:text-sm text-gray-300 leading-relaxed shadow-inner">
             留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是深夜的孤独，连线懂你的玄学导师，将异乡秘密化为指引情路的答案。
           </div>
@@ -154,7 +155,6 @@ function App() {
               return (
                 <div 
                   key={advisor.id}
-                  // ✅ 修改点：点击触发按需加载
                   onClick={() => handleCardClick(advisor)}
                   className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer flex gap-4 items-start relative overflow-hidden"
                 >
@@ -163,7 +163,7 @@ function App() {
                       src={advisor.imageUrl} 
                       alt={advisor.name_zh} 
                       className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm bg-gray-100"
-                      loading="lazy" // 浏览器原生懒加载
+                      loading="lazy"
                     />
                   </div>
 
@@ -256,7 +256,6 @@ function App() {
               <div className="space-y-3">
                 <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">关于我</h4>
                 <div className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl min-h-[60px]">
-                  {/* 如果简介还没加载出来，显示加载动画 */}
                   {detailsLoading && !selectedAdvisor.bio_zh ? (
                     <span className="text-gray-400 animate-pulse">正在读取神谕信息...</span>
                   ) : (
@@ -282,7 +281,7 @@ function App() {
                 </div>
               )}
 
-              {/* 背景认证 (只在加载完成后显示) */}
+              {/* 背景认证 (按需加载) */}
               <div className="space-y-3">
                 <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">背景认证</h4>
                 
@@ -311,7 +310,6 @@ function App() {
 
               {/* 底部操作 */}
               <div className="pt-4 mt-4 border-t border-gray-100">
-                 {/* 加载中或有二维码时显示 */}
                  {detailsLoading ? (
                     <div className="text-center bg-gray-50 rounded-xl p-6 h-40 flex items-center justify-center animate-pulse text-gray-400 text-xs">
                       加载联系方式...
