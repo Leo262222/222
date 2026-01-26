@@ -118,7 +118,7 @@ function App() {
 
           {/* ✅ 官方指定 Slogan (已恢复) */}
           <div className="mt-2 bg-white/5 p-3 rounded-lg border border-white/10 text-xs sm:text-sm text-gray-300 leading-relaxed shadow-inner">
-            留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是深夜的孤独，连线懂你的玄学导师，将异乡秘密化为指引情路的答案。
+            留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是亲朋关系&学业工作，连线懂你的玄学导师，将心中困惑化为指引的灯塔。
           </div>
         </div>
       </header>
