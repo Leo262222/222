@@ -2,16 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Advisor } from '../types';
 
-// 预设的分类选项 (对应前端的页签)
-const CATEGORY_OPTIONS = [
-  { value: 'Tarot', label: '塔罗/雷诺曼 (Tarot)' },
-  { value: 'Astrology', label: '占星 (Astrology)' },
-  { value: 'Love', label: '情感咨询 (Love)' },
-  { value: 'Career', label: '事业学业 (Career)' },
-  { value: 'Life Abroad', label: '海外生活 (Life Abroad)' }
-];
+interface CategoryItem {
+  id: number;
+  value: string;
+  label: string;
+}
 
-// 预设的擅长话题 (快捷标签)
 const PRESET_SPECIALTIES = [
   "情感复合", "正缘桃花", "分手挽回", "暗恋", 
   "事业发展", "跳槽求职", "学业考试", "留学申请",
@@ -20,45 +16,55 @@ const PRESET_SPECIALTIES = [
 
 const AdminDashboard = () => {
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCatModalOpen, setIsCatModalOpen] = useState(false);
+  
   const [editingAdvisor, setEditingAdvisor] = useState<Partial<Advisor> | null>(null);
 
-  // 状态：用于编辑擅长话题的文本
   const [specialtiesText, setSpecialtiesText] = useState('');
-  // 状态：用于编辑多选分类
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  
+  const [newCatLabel, setNewCatLabel] = useState('');
+  const [newCatValue, setNewCatValue] = useState('');
 
   // 1. 加载数据
-  const fetchAdvisors = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: advData, error: advError } = await supabase
         .from('advisors')
         .select('*')
         .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setAdvisors(data || []);
+      if (advError) throw advError;
+      setAdvisors(advData || []);
+
+      const { data: catData, error: catError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('id', { ascending: true });
+      if (catError) throw catError;
+      setCategories(catData || []);
+
     } catch (error) {
-      console.error('Error fetching:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAdvisors();
+    fetchData();
   }, []);
 
-  // 2. 退出登录
   const handleLogout = async () => {
     if (window.confirm('确定要退出登录吗？')) {
       await supabase.auth.signOut();
     }
   };
 
-  // 3. 删除
   const handleDelete = async (id: string) => {
     if (!window.confirm('确定要删除这位顾问吗？')) return;
     try {
@@ -70,25 +76,27 @@ const AdminDashboard = () => {
     }
   };
 
-  // 4. 打开弹窗 (初始化数据)
+  // 4. 打开顾问弹窗
   const openModal = (advisor: Advisor | null = null) => {
     if (advisor) {
       setEditingAdvisor({ ...advisor });
       
-      // A. 处理擅长话题 (数组转文本)
       let safeText = '';
-      const rawTags = advisor.specialties_zh;
-      if (Array.isArray(rawTags)) safeText = rawTags.join(', ');
-      else if (typeof rawTags === 'string') safeText = rawTags.replace(/[\[\]"']/g, '');
+      // ✅ 修复点：加了 "as any" 骗过 Typescript 检查
+      const rawTags = advisor.specialties_zh as any; 
+      
+      if (Array.isArray(rawTags)) {
+        safeText = rawTags.join(', ');
+      } else if (typeof rawTags === 'string') {
+        // 这一行之前报错，现在加了 as any 就不会报错了
+        safeText = rawTags.replace(/[\[\]"']/g, ''); 
+      }
       setSpecialtiesText(safeText);
 
-      // B. 处理分类 (字符串转数组)
-      // 数据库里存的是 "Tarot,Astrology"，我们需要把它拆开变成勾选状态
       const rawCat = advisor.category || '';
       setSelectedCategories(rawCat.split(',').filter(Boolean));
 
     } else {
-      // 新增默认值
       setEditingAdvisor({ 
         isOnline: true, 
         pricePerMinute: 1.99, 
@@ -103,7 +111,40 @@ const AdminDashboard = () => {
     setIsModalOpen(true);
   };
 
-  // 5. 图片处理
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatLabel || !newCatValue) return alert("请填写完整！");
+
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert([{ label: newCatLabel, value: newCatValue }])
+        .select();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setCategories([...categories, data[0]]);
+        setNewCatLabel('');
+        setNewCatValue('');
+        alert("分类添加成功！");
+      }
+    } catch (error: any) {
+      alert("添加失败: " + error.message);
+    }
+  };
+
+  const handleDeleteCategory = async (id: number) => {
+    if (!window.confirm("确定删除吗？\n警告：删除后，属于该分类的老师可能会显示异常，建议先修改老师分类再删除。")) return;
+    try {
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) throw error;
+      setCategories(prev => prev.filter(c => c.id !== id));
+    } catch (error: any) {
+      alert("删除失败: " + error.message);
+    }
+  };
+
   const processImage = (file: File, callback: (base64: string) => void) => {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -165,43 +206,32 @@ const AdminDashboard = () => {
     setEditingAdvisor(prev => ({ ...prev, certificates: updatedCerts }));
   };
 
-  // ✅ 处理分类勾选
   const toggleCategory = (value: string) => {
     setSelectedCategories(prev => {
-      if (prev.includes(value)) {
-        return prev.filter(c => c !== value); // 取消勾选
-      } else {
-        return [...prev, value]; // 勾选
-      }
+      if (prev.includes(value)) return prev.filter(c => c !== value);
+      else return [...prev, value];
     });
   };
 
-  // ✅ 处理快捷标签点击
   const addPresetTag = (tag: string) => {
     if (!specialtiesText.includes(tag)) {
       setSpecialtiesText(prev => prev ? `${prev}, ${tag}` : tag);
     }
   };
 
-  // 6. 保存
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveAdvisor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAdvisor) return;
 
     try {
       const isEdit = !!editingAdvisor.id;
-      
-      // 1. 清洗擅长话题
       const cleanInput = specialtiesText.replace(/[\[\]"']/g, ''); 
       const specialtiesArray = cleanInput.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
-
-      // 2. 整理分类 (将数组 ["Tarot", "Love"] 变成字符串 "Tarot,Love" 存入数据库)
       const categoryString = selectedCategories.join(',');
 
-      // 3. 整理数据
       const saveData = {
         ...editingAdvisor,
-        category: categoryString, // ✅ 存多选结果
+        category: categoryString,
         certificates: editingAdvisor.certificates || [],
         name_zh: editingAdvisor.name_zh,
         title_zh: editingAdvisor.title_zh,
@@ -228,9 +258,8 @@ const AdminDashboard = () => {
       }
 
       setIsModalOpen(false);
-      fetchAdvisors(); 
+      fetchData(); 
       alert('保存成功！');
-
     } catch (error: any) {
       console.error('Save error:', error);
       alert('保存失败: ' + error.message);
@@ -249,12 +278,14 @@ const AdminDashboard = () => {
         <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <div><h1 className="text-2xl font-bold text-gray-800">留子树洞 - 顾问管理</h1></div>
           <div className="flex gap-3">
+            <button onClick={() => setIsCatModalOpen(true)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition">
+               🗂️ 管理分类
+            </button>
             <button onClick={() => openModal()} className="px-6 py-2 bg-purple-900 text-white rounded-lg hover:bg-purple-800 font-medium shadow-md transition">+ 添加顾问</button>
             <button onClick={handleLogout} className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 font-medium transition">退出</button>
           </div>
         </div>
 
-        {/* 列表区域 */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
           <table className="w-full text-left">
             <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 font-medium">
@@ -276,10 +307,14 @@ const AdminDashboard = () => {
                   </td>
                   <td className="p-4">
                     <div className="flex flex-wrap gap-1">
-                      {/* 显示多选分类 */}
-                      {(advisor.category || '').split(',').filter(Boolean).map(cat => (
-                         <span key={cat} className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px] font-medium border border-purple-100">{cat}</span>
-                      ))}
+                      {(advisor.category || '').split(',').filter(Boolean).map(cat => {
+                        const found = categories.find(c => c.value === cat);
+                        return (
+                           <span key={cat} className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px] font-medium border border-purple-100">
+                             {found ? found.label.split('(')[0] : cat}
+                           </span>
+                        )
+                      })}
                     </div>
                   </td>
                   <td className="p-4 text-sm font-mono text-gray-600">$ {advisor.pricePerMinute}</td>
@@ -294,7 +329,50 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* 编辑弹窗 */}
+      {isCatModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+             <div className="bg-gray-50 border-b px-6 py-4 flex justify-between items-center">
+                <h3 className="font-bold text-lg text-gray-800">🗂️ 分类管理</h3>
+                <button onClick={() => setIsCatModalOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+             </div>
+             <div className="p-6">
+                <form onSubmit={handleAddCategory} className="flex gap-2 mb-6 p-4 bg-purple-50 rounded-xl border border-purple-100">
+                  <div className="flex-1">
+                    <input 
+                       placeholder="分类名称 (如: 塔罗)" 
+                       className="w-full text-sm p-2 border rounded mb-2"
+                       value={newCatLabel}
+                       onChange={e => setNewCatLabel(e.target.value)}
+                       required
+                    />
+                    <input 
+                       placeholder="英文代码 (如: Tarot)" 
+                       className="w-full text-sm p-2 border rounded font-mono"
+                       value={newCatValue}
+                       onChange={e => setNewCatValue(e.target.value)}
+                       required
+                    />
+                  </div>
+                  <button type="submit" className="bg-purple-600 text-white font-bold px-4 rounded-lg hover:bg-purple-700 h-auto">添加</button>
+                </form>
+
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                   {categories.map(cat => (
+                     <div key={cat.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-gray-50">
+                        <div>
+                          <div className="font-bold text-gray-800">{cat.label}</div>
+                          <div className="text-xs text-gray-400 font-mono">{cat.value}</div>
+                        </div>
+                        <button onClick={() => handleDeleteCategory(cat.id)} className="text-red-500 hover:text-red-700 text-sm">删除</button>
+                     </div>
+                   ))}
+                </div>
+             </div>
+           </div>
+        </div>
+      )}
+
       {isModalOpen && editingAdvisor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -303,7 +381,7 @@ const AdminDashboard = () => {
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
             
-            <form onSubmit={handleSave} className="p-6 space-y-6">
+            <form onSubmit={handleSaveAdvisor} className="p-6 space-y-6">
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -323,12 +401,11 @@ const AdminDashboard = () => {
 
               <div className="bg-gray-50 p-5 rounded-xl space-y-5 border border-gray-100">
                 
-                {/* 🔴 改动点1：多选分类 */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">所属分类 (可多选)</label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {CATEGORY_OPTIONS.map((opt) => (
-                      <label key={opt.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition ${selectedCategories.includes(opt.value) ? 'bg-purple-100 border-purple-400 text-purple-900' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    {categories.map((opt) => (
+                      <label key={opt.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition ${selectedCategories.includes(opt.value) ? 'bg-purple-100 border-purple-400 text-purple-900' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                         <input 
                           type="checkbox" 
                           checked={selectedCategories.includes(opt.value)}
@@ -342,7 +419,6 @@ const AdminDashboard = () => {
                   {selectedCategories.length === 0 && <p className="text-xs text-red-400 mt-1">* 请至少选择一个分类</p>}
                 </div>
 
-                {/* 🔴 改动点2：快捷话题标签 */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">擅长话题</label>
                   <input 
@@ -353,7 +429,6 @@ const AdminDashboard = () => {
                     className="w-full border p-2 rounded-lg mb-2" 
                     placeholder="例如: 情感复合, 事业发展" 
                   />
-                  {/* 快捷按钮区 */}
                   <div className="flex flex-wrap gap-2">
                     {PRESET_SPECIALTIES.map(tag => (
                       <button 
@@ -380,7 +455,6 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* 背景认证 (证书) */}
               <div className="border border-gray-200 rounded-xl p-4">
                 <div className="flex justify-between items-center mb-3">
                   <label className="text-sm font-bold text-gray-700">背景认证 (证书/资质)</label>
