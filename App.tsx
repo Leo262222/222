@@ -13,7 +13,6 @@ const getSafeTags = (input: any): string[] => {
   return [];
 };
 
-// 定义分类结构
 interface CategoryItem {
   id: number;
   value: string;
@@ -37,7 +36,7 @@ function App() {
         const { data: advisorsData, error: advError } = await supabase
           .from('advisors')
           .select('*')
-          .order('rating', { ascending: false }); // 移除了按 isOnline 排序
+          .order('rating', { ascending: false });
 
         if (advError) throw advError;
         setAdvisors(advisorsData || []);
@@ -74,16 +73,21 @@ function App() {
       
       {/* 顶部导航 */}
       <header className="bg-[#1a202c] text-white py-6 px-4 shadow-lg sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🌲</span>
-              <h1 className="text-xl font-bold tracking-wide">留子树洞</h1>
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🌲</span>
+                <h1 className="text-xl font-bold tracking-wide">留子树洞</h1>
+              </div>
+              <p className="text-xs text-gray-400 mt-1 pl-9">树洞藏秘密，神谕断情关。</p>
             </div>
-            <p className="text-xs text-gray-400 mt-1 pl-9">树洞藏秘密，神谕断情关。</p>
           </div>
-          {/* 🔴 改动点：移除了右侧的 "X人在线" 统计 */}
-          <div className="text-right"></div>
+
+          {/* ✅ 已恢复 Slogan (带一点透明背景，更精致) */}
+          <div className="mt-2 bg-white/5 p-3 rounded-lg border border-white/10 text-xs sm:text-sm text-gray-300 leading-relaxed shadow-inner">
+            留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是深夜的孤独，连线懂你的玄学老师，将异乡的秘密化为指引情路的灯塔。
+          </div>
         </div>
       </header>
 
@@ -109,7 +113,7 @@ function App() {
       {/* 列表区 */}
       <main className="max-w-4xl mx-auto px-4 mt-6">
         {loading ? (
-          <div className="text-center py-20 text-gray-400">加载中...</div>
+          <div className="text-center py-20 text-gray-400">加载神谕中...</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredAdvisors.map(advisor => {
@@ -126,7 +130,6 @@ function App() {
                       alt={advisor.name_zh} 
                       className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm bg-gray-100"
                     />
-                    {/* 🔴 改动点：移除了头像右下角的 "在线" 绿点 */}
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -192,7 +195,6 @@ function App() {
               <div className="text-center">
                 <div className="relative w-24 h-24 mx-auto mb-4">
                   <img src={selectedAdvisor.imageUrl} className="w-full h-full rounded-full object-cover border-4 border-purple-50 shadow-lg" alt="Avatar"/>
-                  {/* 🔴 改动点：移除了详情页头像的 "在线" 绿点 */}
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900">{selectedAdvisor.name_zh}</h2>
                 <p className="text-purple-600 font-medium text-sm mt-1">{selectedAdvisor.title_zh}</p>
