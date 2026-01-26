@@ -116,7 +116,7 @@ function App() {
             </div>
           </div>
 
-          {/* ✅ 官方指定 Slogan (已恢复) */}
+          {/* ✅ 官方指定 Slogan */}
           <div className="mt-2 bg-white/5 p-3 rounded-lg border border-white/10 text-xs sm:text-sm text-gray-300 leading-relaxed shadow-inner">
             留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是亲朋关系&学业工作，连线懂你的玄学导师，将心中困惑化为指引的灯塔。
           </div>
@@ -308,7 +308,7 @@ function App() {
                 <p className="text-[10px] text-gray-400">已通过平台资质审核，点击可查看大图</p>
               </div>
 
-              {/* 底部操作 */}
+              {/* 底部操作 (文案已修改) */}
               <div className="pt-4 mt-4 border-t border-gray-100">
                  {detailsLoading ? (
                     <div className="text-center bg-gray-50 rounded-xl p-6 h-40 flex items-center justify-center animate-pulse text-gray-400 text-xs">
@@ -316,9 +316,11 @@ function App() {
                     </div>
                  ) : selectedAdvisor.bookingQrUrl ? (
                    <div className="text-center bg-purple-50 rounded-xl p-6 border border-purple-100">
-                     <p className="text-sm font-bold text-purple-900 mb-3">扫描二维码，立即联系</p>
+                     {/* ✅ 修改 1：长按下载图片 */}
+                     <p className="text-sm font-bold text-purple-900 mb-3">长按下载图片</p>
                      <img src={selectedAdvisor.bookingQrUrl} className="w-40 h-40 mx-auto rounded-lg shadow-sm mix-blend-multiply" alt="QR Code"/>
-                     <p className="text-xs text-purple-400 mt-3">添加时请注明来源</p>
+                     {/* ✅ 修改 2：微信扫一扫 */}
+                     <p className="text-xs text-purple-400 mt-3">微信扫一扫，立即连线</p>
                    </div>
                  ) : (
                    <div className="text-center py-6 bg-gray-50 rounded-xl text-gray-400 text-sm">
