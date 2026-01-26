@@ -34,7 +34,6 @@ function App() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // 只取必要字段
         const { data: advisorsData, error: advError } = await supabase
           .from('advisors')
           .select('id, name_zh, title_zh, imageUrl, isOnline, rating, pricePerMinute, yearsExperience, specialties_zh, category')
@@ -61,7 +60,6 @@ function App() {
     };
     fetchData();
 
-    // 滚动监听 (仅影响移动端头部样式)
     const handleScroll = () => {
       if (window.scrollY > 20) {
         setIsScrolled(true);
@@ -102,11 +100,11 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
       
-      {/* 头部 (保持之前的逻辑) */}
+      {/* 头部 */}
       <header className={`bg-[#1a202c] text-white px-4 shadow-lg sticky top-0 z-40 transition-all duration-300 ease-in-out ${
         isScrolled ? 'py-3' : 'py-6'
       }`}>
-        <div className="max-w-6xl mx-auto"> {/* 修改容器宽度为 6xl 以适应 Web 大屏 */}
+        <div className="max-w-6xl mx-auto">
           <div className={`flex justify-between items-center transition-all duration-300 ${isScrolled ? 'mb-0' : 'mb-3'}`}>
             <div>
               <div className="flex items-center gap-2">
@@ -157,10 +155,6 @@ function App() {
             <p className="animate-pulse">✨ 正在连接宇宙能量...</p>
           </div>
         ) : (
-          /* 🔴 核心改动：
-            Web端 (md以上): grid-cols-3 (三列大卡片)
-            手机端 (默认): grid-cols-1 (单列小卡片)
-          */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
             {filteredAdvisors.map(advisor => {
               const safeTags = getSafeTags(advisor.specialties_zh);
@@ -168,26 +162,17 @@ function App() {
                 <div 
                   key={advisor.id}
                   onClick={() => handleCardClick(advisor)}
-                  /* 🔴 核心改动：卡片布局
-                     手机端: flex-row (横向，左图右文)
-                     Web端: flex-col (纵向，上图下文，文字居中) + 增加内边距 p-6
-                  */
                   className="group bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-row md:flex-col items-start md:items-center md:text-center gap-4 md:gap-6 relative overflow-hidden"
                 >
                   
                   {/* 头像区域 */}
                   <div className="relative shrink-0">
-                    {/* 🔴 核心改动：头像尺寸
-                       手机端: w-16 (小)
-                       Web端: w-32 (超大，像 KEEN 那样)
-                    */}
                     <img 
                       src={advisor.imageUrl} 
                       alt={advisor.name_zh} 
                       className="w-16 h-16 md:w-32 md:h-32 rounded-full object-cover border-2 border-white shadow-md bg-gray-100 group-hover:scale-105 transition-transform duration-500"
                       loading="lazy"
                     />
-                    {/* 在线状态点 (仅 Web 端显示在头像旁，手机端已移除) */}
                     {advisor.isOnline && (
                       <div className="hidden md:block absolute bottom-2 right-2 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>
                     )}
@@ -202,10 +187,11 @@ function App() {
                         {advisor.name_zh || advisor.name}
                       </h3>
                       
-                      {/* Web端：评分显示在名字下方 */}
+                      {/* 评分标签 */}
                       <div className="flex items-center text-yellow-500 text-xs md:text-sm font-bold bg-yellow-50 px-2 py-0.5 rounded md:mt-2">
                         <span>★ {advisor.rating}</span>
-                        <span className="text-gray-400 font-normal ml-1">({advisor.yearsExperience}年经验)</span>
+                        {/* 🔴 修改点：手机端隐藏经验年限 (hidden)，只在电脑端显示 (md:inline) */}
+                        <span className="hidden md:inline text-gray-400 font-normal ml-1">({advisor.yearsExperience}年经验)</span>
                       </div>
                     </div>
                     
@@ -214,7 +200,7 @@ function App() {
                       {advisor.title_zh || advisor.title}
                     </p>
 
-                    {/* 标签 (Web端显示更多) */}
+                    {/* 标签 */}
                     <div className="flex flex-wrap gap-1.5 mb-3 md:justify-center">
                       {safeTags.slice(0, 3).map((tag, i) => (
                         <span key={i} className="text-[10px] md:text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-100">
@@ -225,7 +211,6 @@ function App() {
 
                     {/* 底部：价格 & 按钮 */}
                     <div className="flex md:flex-col justify-between items-center w-full border-t md:border-t-0 border-gray-50 pt-3 md:pt-0 mt-auto">
-                      {/* 价格 */}
                       <div className="md:mb-4">
                         <span className="text-sm md:text-3xl font-bold text-gray-900">
                           $ {advisor.pricePerMinute}
@@ -233,14 +218,13 @@ function App() {
                         <span className="text-xs md:text-sm text-gray-400"> / 分钟</span>
                       </div>
 
-                      {/* 🔴 Web端专属大按钮 (仿 KEEN 风格) */}
                       <div className="hidden md:block w-full">
                         <button className="w-full bg-[#10B981] hover:bg-[#059669] text-white font-bold py-3 rounded-xl shadow-lg shadow-green-100 transition-colors flex items-center justify-center gap-2">
                            <span className="text-xl">📞</span> 立即连线
                         </button>
                       </div>
 
-                      {/* 手机端仅显示经验 (保持原样) */}
+                      {/* 手机端底部：经验年限保留在这里 */}
                       <span className="md:hidden text-xs font-bold text-gray-400">
                         {advisor.yearsExperience} 年经验
                       </span>
@@ -253,7 +237,7 @@ function App() {
         )}
       </main>
 
-      {/* 弹窗 (保持不变) */}
+      {/* 弹窗 */}
       {selectedAdvisor && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div 
