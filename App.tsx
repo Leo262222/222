@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { Advisor } from './types';
 
+// 智能清洗函数
 const getSafeTags = (input: any): string[] => {
   if (!input) return [];
   if (Array.isArray(input)) return input;
   if (typeof input === 'string') {
-    const clean = input.replace(/[\[\]"']/g, '');
+    const clean = input.replace(/[\[\]"']/g, ''); 
     return clean.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
   }
   return [];
@@ -16,9 +17,10 @@ function App() {
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // 1. 获取顾问数据
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -40,9 +42,14 @@ function App() {
     fetchData();
   }, []);
 
+  // 2. 🔴 筛选逻辑 (升级版：支持多选分类)
+  // 如果老师的 category 字段里包含当前选中的页签，就显示
   const filteredAdvisors = selectedCategory === 'All' 
     ? advisors 
-    : advisors.filter(a => a.category === selectedCategory);
+    : advisors.filter(a => {
+        const categories = (a.category || '').split(','); // "Tarot,Love" -> ["Tarot", "Love"]
+        return categories.includes(selectedCategory);
+      });
 
   const categories = [
     { id: 'All', label: '全部' },
@@ -56,38 +63,26 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-20">
       
-      {/* 1. 导航栏 */}
-      <nav className="bg-[#1a202c] text-white py-4 px-4 shadow-md sticky top-0 z-40 border-b border-gray-800">
+      {/* 顶部导航 */}
+      <header className="bg-[#1a202c] text-white py-6 px-4 shadow-lg sticky top-0 z-40">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🌲</span>
-            <h1 className="text-lg font-bold tracking-wide">留子树洞</h1>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🌲</span>
+              <h1 className="text-xl font-bold tracking-wide">留子树洞</h1>
+            </div>
+            <p className="text-xs text-gray-400 mt-1 pl-9">树洞藏秘密，神谕断情关。</p>
           </div>
-          <div className="text-right flex items-center gap-2">
-             <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
+          <div className="text-right">
+             <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
              <span className="text-xs font-medium text-green-400">{advisors.filter(a => a.isOnline).length} 人在线</span>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* 2. 英雄区 (简介) */}
-      <div className="bg-[#1a202c] text-white pt-2 pb-8 px-4 shadow-lg mb-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold mb-4 tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-purple-200 to-white">
-            树洞藏秘密，神谕断情关。
-          </h2>
-          <p className="text-sm text-gray-400 leading-relaxed max-w-2xl text-justify">
-            留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是深夜的孤独，连线懂你的玄学导师，将异乡秘密化为指引情路的答案。
-          </p>
-        </div>
-      </div>
-
-      {/* 3. 分类按钮 */}
-      <div className="max-w-4xl mx-auto px-4 -mt-4 mb-6 relative z-10">
-        <div className="bg-white p-2 rounded-xl shadow-md border border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
+      {/* 分类栏 */}
+      <div className="max-w-4xl mx-auto px-4 mt-6">
+        <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
           {categories.map(cat => (
             <button
               key={cat.id}
@@ -104,8 +99,8 @@ function App() {
         </div>
       </div>
 
-      {/* 4. 顾问列表 */}
-      <main className="max-w-4xl mx-auto px-4">
+      {/* 列表区 */}
+      <main className="max-w-4xl mx-auto px-4 mt-6">
         {loading ? (
           <div className="text-center py-20 text-gray-400">加载神谕中...</div>
         ) : (
@@ -169,7 +164,7 @@ function App() {
         )}
       </main>
 
-      {/* 5. 详情弹窗 */}
+      {/* 弹窗 */}
       {selectedAdvisor && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div 
@@ -190,6 +185,7 @@ function App() {
             </div>
 
             <div className="p-6 space-y-8">
+              {/* 个人卡片 */}
               <div className="text-center">
                 <div className="relative w-24 h-24 mx-auto mb-4">
                   <img src={selectedAdvisor.imageUrl} className="w-full h-full rounded-full object-cover border-4 border-purple-50 shadow-lg" alt="Avatar"/>
@@ -216,6 +212,7 @@ function App() {
                 </div>
               </div>
 
+              {/* 关于我 */}
               <div className="space-y-3">
                 <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">关于我</h4>
                 <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
@@ -223,6 +220,7 @@ function App() {
                 </p>
               </div>
 
+              {/* 擅长话题 */}
               {getSafeTags(selectedAdvisor.specialties_zh).length > 0 && (
                 <div className="space-y-3">
                   <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">擅长话题</h4>
@@ -239,6 +237,7 @@ function App() {
                 </div>
               )}
 
+              {/* 背景认证 */}
               {(selectedAdvisor.certificates || []).length > 0 && (
                 <div className="space-y-3">
                   <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">背景认证</h4>
@@ -258,6 +257,7 @@ function App() {
                 </div>
               )}
 
+              {/* 底部操作 */}
               <div className="pt-4 mt-4 border-t border-gray-100">
                  {selectedAdvisor.bookingQrUrl ? (
                    <div className="text-center bg-purple-50 rounded-xl p-6 border border-purple-100">
@@ -277,13 +277,13 @@ function App() {
         </div>
       )}
 
-      {/* 6. 大图预览 */}
+      {/* 全屏图片查看 */}
       {selectedCertificate && (
         <div 
-          className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
-          onClick={() => setSelectedCertificate(null)}
+          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setSelectedCertificate(null)} 
         >
-          <button className="absolute top-6 right-6 text-white/50 hover:text-white transition">
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/20 rounded-full p-1">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -297,6 +297,7 @@ function App() {
         </div>
       )}
 
+      {/* 版权 */}
       <footer className="text-center text-gray-300 text-[10px] py-8">
         <p>© 2026 Liuzi Tree Hollow. All rights reserved.</p>
       </footer>
