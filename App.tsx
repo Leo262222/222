@@ -113,7 +113,7 @@ function App() {
       {/* 列表区 */}
       <main className="max-w-4xl mx-auto px-4 mt-6">
         {loading ? (
-          <div className="text-center py-20 text-gray-400">神谕中...</div>
+          <div className="text-center py-20 text-gray-400">加载中...</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredAdvisors.map(advisor => {
