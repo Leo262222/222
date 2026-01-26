@@ -22,29 +22,27 @@ interface CategoryItem {
 
 function App() {
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
-  const [categories, setCategories] = useState<CategoryItem[]>([]); // ✅ 必须有这个状态
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedAdvisor, setSelectedAdvisor] = useState<Advisor | null>(null);
   const [selectedCertificate, setSelectedCertificate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. 获取数据 (顾问 + 分类)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // A. 获取顾问
+        // 获取顾问
         const { data: advisorsData, error: advError } = await supabase
           .from('advisors')
           .select('*')
-          .order('isOnline', { ascending: false })
-          .order('rating', { ascending: false });
+          .order('rating', { ascending: false }); // 移除了按 isOnline 排序
 
         if (advError) throw advError;
         setAdvisors(advisorsData || []);
 
-        // B. ✅ 获取分类 (并加上 'All' 选项)
+        // 获取分类
         const { data: catData, error: catError } = await supabase
           .from('categories')
           .select('*')
@@ -52,7 +50,6 @@ function App() {
         
         if (catError) throw catError;
         
-        // 构造完整分类列表 (默认加上全部)
         const allCat: CategoryItem = { id: 0, value: 'All', label: '全部' };
         setCategories([allCat, ...(catData || [])]);
 
@@ -65,7 +62,6 @@ function App() {
     fetchData();
   }, []);
 
-  // 2. 筛选逻辑
   const filteredAdvisors = selectedCategory === 'All' 
     ? advisors 
     : advisors.filter(a => {
@@ -86,17 +82,14 @@ function App() {
             </div>
             <p className="text-xs text-gray-400 mt-1 pl-9">树洞藏秘密，神谕断情关。</p>
           </div>
-          <div className="text-right">
-             <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
-             <span className="text-xs font-medium text-green-400">{advisors.filter(a => a.isOnline).length} 人在线</span>
-          </div>
+          {/* 🔴 改动点：移除了右侧的 "X人在线" 统计 */}
+          <div className="text-right"></div>
         </div>
       </header>
 
-      {/* 分类栏 (动态渲染) */}
+      {/* 分类栏 */}
       <div className="max-w-4xl mx-auto px-4 mt-6">
         <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
-          {/* ✅ 这里的 categories 必须是从数据库读出来的 */}
           {categories.map(cat => (
             <button
               key={cat.id}
@@ -107,7 +100,6 @@ function App() {
                   : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
               }`}
             >
-              {/* 只显示中文名，去掉括号里的英文 */}
               {cat.label.includes('(') ? cat.label.split('(')[0] : cat.label}
             </button>
           ))}
@@ -134,11 +126,7 @@ function App() {
                       alt={advisor.name_zh} 
                       className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm bg-gray-100"
                     />
-                    {advisor.isOnline && (
-                      <div className="absolute bottom-0 right-0 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
-                        在线
-                      </div>
-                    )}
+                    {/* 🔴 改动点：移除了头像右下角的 "在线" 绿点 */}
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -204,7 +192,7 @@ function App() {
               <div className="text-center">
                 <div className="relative w-24 h-24 mx-auto mb-4">
                   <img src={selectedAdvisor.imageUrl} className="w-full h-full rounded-full object-cover border-4 border-purple-50 shadow-lg" alt="Avatar"/>
-                  {selectedAdvisor.isOnline && <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-4 border-white rounded-full"></div>}
+                  {/* 🔴 改动点：移除了详情页头像的 "在线" 绿点 */}
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900">{selectedAdvisor.name_zh}</h2>
                 <p className="text-purple-600 font-medium text-sm mt-1">{selectedAdvisor.title_zh}</p>
@@ -220,104 +208,3 @@ function App() {
                     <div className="text-xs text-gray-400">从业经验</div>
                   </div>
                   <div className="w-px bg-gray-200 h-10"></div>
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-gray-900">{selectedAdvisor.rating}</div>
-                    <div className="text-xs text-gray-400">评分</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 关于我 */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">关于我</h4>
-                <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl">
-                  {selectedAdvisor.bio_zh || "这位顾问很神秘，暂时没有留下简介。"}
-                </p>
-              </div>
-
-              {/* 擅长话题 */}
-              {getSafeTags(selectedAdvisor.specialties_zh).length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">擅长话题</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {getSafeTags(selectedAdvisor.specialties_zh).map((tag, idx) => (
-                      <span 
-                        key={idx} 
-                        className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold shadow-sm"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 背景认证 */}
-              {(selectedAdvisor.certificates || []).length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-bold text-gray-900 border-l-4 border-yellow-400 pl-3">背景认证</h4>
-                  <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
-                    {selectedAdvisor.certificates?.map((cert, idx) => (
-                      <div key={idx} className="flex-shrink-0 snap-center">
-                        <img 
-                          src={cert} 
-                          alt="Certificate" 
-                          className="h-24 w-auto rounded-lg border border-gray-200 shadow-sm object-cover cursor-zoom-in hover:opacity-90 transition"
-                          onClick={() => setSelectedCertificate(cert)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-gray-400">已通过平台资质审核，点击可查看大图</p>
-                </div>
-              )}
-
-              {/* 底部操作 */}
-              <div className="pt-4 mt-4 border-t border-gray-100">
-                 {selectedAdvisor.bookingQrUrl ? (
-                   <div className="text-center bg-purple-50 rounded-xl p-6 border border-purple-100">
-                     <p className="text-sm font-bold text-purple-900 mb-3">扫描二维码，立即联系</p>
-                     <img src={selectedAdvisor.bookingQrUrl} className="w-40 h-40 mx-auto rounded-lg shadow-sm mix-blend-multiply" alt="QR Code"/>
-                     <p className="text-xs text-purple-400 mt-3">添加时请注明来源</p>
-                   </div>
-                 ) : (
-                   <div className="text-center py-6 bg-gray-50 rounded-xl text-gray-400 text-sm">
-                     暂无联系方式，请私信平台客服。
-                   </div>
-                 )}
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 全屏图片查看 */}
-      {selectedCertificate && (
-        <div 
-          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
-          onClick={() => setSelectedCertificate(null)} 
-        >
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/20 rounded-full p-1">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          <img 
-            src={selectedCertificate} 
-            alt="Full Certificate" 
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-zoom-in"
-          />
-        </div>
-      )}
-
-      {/* 版权 */}
-      <footer className="text-center text-gray-300 text-[10px] py-8">
-        <p>© 2026 Liuzi Tree Hollow. All rights reserved.</p>
-      </footer>
-    </div>
-  );
-}
-
-export default App;
