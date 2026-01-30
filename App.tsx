@@ -5,9 +5,9 @@ import emailjs from '@emailjs/browser';
 // =================================================================
 // ⚠️⚠️⚠️ 请在下面填入你的 EmailJS ID (保留引号) ⚠️⚠️⚠️
 // =================================================================
-const EMAILJS_SERVICE_ID = 'service_xxxxxx';   // 你的 Service ID
-const EMAILJS_TEMPLATE_ID = 'template_xxxxxx'; // 你的 Template ID
-const EMAILJS_PUBLIC_KEY = 'xxxxxxxxxxxxxx';   // 你的 Public Key
+const EMAILJS_SERVICE_ID = 'service_p6mrruk';   // 你的 Service ID
+const EMAILJS_TEMPLATE_ID = 'template_9lgwpom'; // 你的 Template ID
+const EMAILJS_PUBLIC_KEY = 'DyTU_U5PGsEAaiz6B';   // 你的 Public Key
 // =================================================================
 
 // --- 类型定义 ---
