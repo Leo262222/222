@@ -6,7 +6,7 @@ import emailjs from '@emailjs/browser';
 // ✅ 已预填你的真实 ID，直接使用即可
 // =================================================================
 const EMAILJS_SERVICE_ID = 'service_p6mrruk';   
-const EMAILJS_TEMPLATE_ID = 'template_91gwpom'; 
+const EMAILJS_TEMPLATE_ID = 'template_9lgwpom'; 
 const EMAILJS_PUBLIC_KEY = 'DyTU_U5PGsEAaiz6B'; 
 // =================================================================
 
