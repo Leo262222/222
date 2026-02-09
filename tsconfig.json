@@ -6,7 +6,7 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
-    /* 核心修改：把 bundler 改成 node，让它更容易找到第三方包 */
+    /* 🟢 核心修复：修改模块解析策略，让它能找到 emailjs */
     "moduleResolution": "node",
     
     "allowImportingTsExtensions": true,
@@ -15,7 +15,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* 稍微放宽一点检查，防止因为严格模式报错 */
+    /* 🟢 宽容模式：关闭严格检查，防止因小问题卡住构建 */
     "strict": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
