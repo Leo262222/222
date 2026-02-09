@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import emailjs from '@emailjs/browser';
 
 // =================================================================
-// ✅ EmailJS 配置 (保留配置，用于匿名发送)
+// ✅ EmailJS 配置 (保留配置，确保留言功能可用)
 // =================================================================
 const EMAILJS_SERVICE_ID = 'service_p6mrruk';   
 const EMAILJS_TEMPLATE_ID = 'template_91gwpom'; 
@@ -25,9 +25,9 @@ interface Advisor {
   title_zh?: string;
   bio_zh?: string;
   specialties_zh?: string;
-  bookingQrUrl?: string;
-  certificates?: string[];
-  sort_order?: number; // ✅ 保留排序字段
+  bookingQrUrl?: string;   // ✅ 找回字段
+  certificates?: string[]; // ✅ 找回字段
+  sort_order?: number;     // ✅ 保留排序
 }
 
 interface CategoryItem {
@@ -36,42 +36,24 @@ interface CategoryItem {
   label: string;
 }
 
-// --- 组件：提问箱 (恢复为简单版，不需要登录) ---
+// --- 组件：提问箱 (最简单的版本，不强制用户登录) ---
 const QuestionBox = ({ advisor }: { advisor: Advisor }) => {
   const [content, setContent] = useState('');
-  const [userEmail, setUserEmail] = useState(''); // 新增：让用户自己填邮箱
+  const [userEmail, setUserEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
 
   const handleSend = async () => {
-    if (!content.trim() || !userEmail.trim()) {
-        alert("请输入邮箱和问题内容");
-        return;
-    }
+    if (!content.trim()) return;
     setSending(true);
     try {
-      // 1. 存入 Supabase (即使没有登录也可以存，或者你可以选择不存，只发邮件)
-      const { error } = await supabase
-        .from('questions')
-        .insert([{ 
-            advisor_id: advisor.id, 
-            content: content, 
-            user_email: userEmail, // 存入用户填写的邮箱
-            status: 'pending'
-        }]);
-
-      if (error) {
-          console.error('Supabase save error:', error);
-          // 如果数据库存失败了，我们依然尝试发邮件
-      }
-      
-      // 2. 发送邮件通知
+      // 直接发送邮件，不涉及数据库存储
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         { 
             to_name: advisor.name_zh, 
-            from_email: userEmail, 
+            from_email: userEmail || 'Anonymous', // 如果用户没填邮箱，显示匿名
             message: content 
         },
         EMAILJS_PUBLIC_KEY
@@ -79,7 +61,6 @@ const QuestionBox = ({ advisor }: { advisor: Advisor }) => {
 
       setSentSuccess(true);
       setContent('');
-      setUserEmail('');
       setTimeout(() => setSentSuccess(false), 5000);
     } catch (err: any) {
       alert('发送失败: ' + err.message); 
@@ -92,27 +73,29 @@ const QuestionBox = ({ advisor }: { advisor: Advisor }) => {
     <div className="mt-6 mb-6"> 
       <div className="flex items-center justify-between mb-3 px-1">
         <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2"><span className="bg-purple-100 text-purple-600 p-1 rounded-md">💌</span> 向TA提问</h4>
+        <span className="text-[10px] text-gray-400">仅你和顾问可见</span>
       </div>
       <div className="bg-white border border-purple-100 rounded-xl shadow-sm overflow-hidden relative p-4">
         {sentSuccess ? (
           <div className="p-8 text-center bg-green-50 animate-fade-in"><div className="text-4xl mb-2">✅</div><h5 className="text-sm font-bold text-green-800">发送成功！</h5></div>
         ) : (
           <div className="space-y-3">
-            <input 
-                type="email" 
+             {/* 这里的邮箱输入框是可选的，或者你可以删掉它，这取决于你最初的设计 */}
+             <input 
+                type="text" 
                 value={userEmail} 
-                onChange={(e) => setUserEmail(e.target.value)} 
-                placeholder="您的邮箱 (用于接收回复)" 
-                className="w-full p-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-            />
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="您的联系方式 (邮箱/微信，可选)"
+                className="w-full p-2 text-sm border border-gray-200 rounded focus:outline-none focus:border-purple-400"
+             />
             <textarea 
                 value={content} 
                 onChange={(e) => setContent(e.target.value)} 
                 placeholder={`Hi ${advisor.name_zh || '老师'}...`} 
-                className="w-full h-24 p-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none"
+                className="w-full h-24 p-2 text-sm border border-gray-200 rounded focus:outline-none focus:border-purple-400 resize-none"
             />
             <div className="flex justify-end">
-              <button onClick={handleSend} disabled={sending || !content.trim()} className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 text-white text-xs font-bold px-6 py-2.5 rounded-full shadow-lg transition-all">{sending ? '发送中...' : '发送邮件'}</button>
+              <button onClick={handleSend} disabled={sending || !content.trim()} className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 text-white text-xs font-bold px-6 py-2 rounded-full shadow-lg transition-all">{sending ? '发送中...' : '发送'}</button>
             </div>
           </div>
         )}
@@ -138,7 +121,7 @@ function App() {
         const { data: advisorsData } = await supabase
           .from('advisors')
           .select('*')
-          // ✅ 核心保留：排序逻辑 (权重优先)
+          // ✅ 核心保留：排序逻辑 (权重优先，然后是评分)
           .order('sort_order', { ascending: true }) 
           .order('rating', { ascending: false });
           
@@ -174,14 +157,33 @@ function App() {
         {loading ? (<div className="text-center py-20 text-gray-400"><p className="animate-pulse">✨ 正在连接宇宙能量...</p></div>) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
             {filteredAdvisors.map(advisor => {
-               return <div key={advisor.id} onClick={() => setSelectedAdvisor(advisor)} className="group bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-row md:flex-col items-start md:items-center md:text-center gap-4 md:gap-6 relative overflow-hidden"><div className="relative shrink-0"><img src={advisor.imageUrl} className="w-16 h-16 md:w-32 md:h-32 rounded-full object-cover border-2 border-white shadow-md bg-gray-100 group-hover:scale-105 transition-transform duration-500" loading="lazy" />{advisor.isOnline && <div className="hidden md:block absolute bottom-2 right-2 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>}</div><div className="flex-1 min-w-0 w-full flex flex-col md:items-center"><div className="flex md:flex-col justify-between md:justify-center items-start md:items-center w-full mb-1 md:mb-3"><h3 className="text-lg md:text-2xl font-bold text-gray-900 truncate">{advisor.name_zh || advisor.name}</h3><div className="flex items-center text-yellow-500 text-xs md:text-sm font-bold bg-yellow-50 px-2 py-0.5 rounded md:mt-2"><span>★ {advisor.rating}</span><span className="hidden md:inline text-gray-400 font-normal ml-1">({advisor.yearsExperience}年)</span></div></div><p className="text-xs md:text-base text-gray-500 font-medium mb-2 md:mb-4 truncate">{advisor.title_zh || advisor.title}</p><div className="flex md:flex-col justify-between items-center w-full border-t md:border-t-0 border-gray-50 pt-3 md:pt-0 mt-auto"><div className="md:mb-4"><span className="text-sm md:text-3xl font-bold text-gray-900">$ {advisor.pricePerMinute}</span><span className="text-xs md:text-sm text-gray-400"> / 分</span></div><div className="hidden md:block w-full"><button className="w-full bg-[#10B981] hover:bg-[#059669] text-white font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"><span className="text-xl">📞</span> 立即连线</button></div></div></div></div>
+               return <div key={advisor.id} onClick={() => setSelectedAdvisor(advisor)} className="group bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-row md:flex-col items-start md:items-center md:text-center gap-4 md:gap-6 relative overflow-hidden"><div className="relative shrink-0"><img src={advisor.imageUrl} className="w-16 h-16 md:w-32 md:h-32 rounded-full object-cover border-2 border-white shadow-md bg-gray-100 group-hover:scale-105 transition-transform duration-500" loading="lazy" />{advisor.isOnline && <div className="hidden md:block absolute bottom-2 right-2 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>}</div><div className="flex-1 min-w-0 w-full flex flex-col md:items-center"><div className="flex md:flex-col justify-between md:justify-center items-start md:items-center w-full mb-1 md:mb-3"><h3 className="text-lg md:text-2xl font-bold text-gray-900 truncate">{advisor.name_zh || advisor.name}</h3><div className="flex items-center text-yellow-500 text-xs md:text-sm font-bold bg-yellow-50 px-2 py-0.5 rounded md:mt-2"><span>★ {advisor.rating}</span><span className="hidden md:inline text-gray-400 font-normal ml-1">({advisor.yearsExperience}年)</span></div></div><p className="text-xs md:text-base text-gray-500 font-medium mb-2 md:mb-4 truncate">{advisor.title_zh || advisor.title}</p>
+               {/* 显示标签 (Specialties) */}
+               <div className="flex flex-wrap gap-1 md:justify-center mt-2 mb-2">
+                 {(advisor.specialties || []).slice(0, 3).map((tag, i) => (
+                   <span key={i} className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">{tag}</span>
+                 ))}
+               </div>
+               <div className="flex md:flex-col justify-between items-center w-full border-t md:border-t-0 border-gray-50 pt-3 md:pt-0 mt-auto"><div className="md:mb-4"><span className="text-sm md:text-3xl font-bold text-gray-900">$ {advisor.pricePerMinute}</span><span className="text-xs md:text-sm text-gray-400"> / 分</span></div><div className="hidden md:block w-full"><button className="w-full bg-[#10B981] hover:bg-[#059669] text-white font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"><span className="text-xl">📞</span> 立即连线</button></div></div></div></div>
             })}
           </div>
         )}
       </main>
 
+      {/* --- 详情弹窗 (恢复显示证书、二维码、标签) --- */}
       {selectedAdvisor && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"><div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedAdvisor(null)}></div><div className="relative bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto animate-slide-up"><div className="sticky top-0 bg-white/95 backdrop-blur z-10 border-b px-6 py-4 flex justify-between items-center"><h3 className="font-bold text-lg">顾问详情</h3><button onClick={() => setSelectedAdvisor(null)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200">✕</button></div><div className="p-6 space-y-6"><div className="text-center"><img src={selectedAdvisor.imageUrl} className="w-24 h-24 mx-auto rounded-full object-cover border-4 border-purple-50 shadow-lg mb-4"/><h2 className="text-2xl font-bold text-gray-900">{selectedAdvisor.name_zh}</h2><p className="text-purple-600 font-medium text-sm mt-1">{selectedAdvisor.title_zh}</p><div className="flex justify-center gap-6 mt-6"><div className="text-center"><div className="text-xl font-bold text-gray-900">${selectedAdvisor.pricePerMinute}</div><div className="text-xs text-gray-400">每分钟</div></div><div className="w-px bg-gray-200 h-10"></div><div className="text-center"><div className="text-xl font-bold text-gray-900">{selectedAdvisor.yearsExperience}年</div><div className="text-xs text-gray-400">经验</div></div><div className="w-px bg-gray-200 h-10"></div><div className="text-center"><div className="text-xl font-bold text-gray-900">{selectedAdvisor.rating}</div><div className="text-xs text-gray-400">评分</div></div></div></div><div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-600 leading-relaxed">{selectedAdvisor.bio_zh || "暂无简介"}</div>{(selectedAdvisor.certificates || []).length > 0 && (<div><h4 className="text-sm font-bold text-gray-900 mb-3 mt-2">资质认证</h4><div className="flex gap-3 overflow-x-auto pb-2">{selectedAdvisor.certificates?.map((cert, idx) => (<img key={idx} src={cert} onClick={() => setSelectedCertificate(cert)} className="h-20 rounded-lg border cursor-zoom-in" />))}</div></div>)}<QuestionBox advisor={selectedAdvisor} /><div className="bg-purple-50 rounded-xl p-6 border border-purple-100 text-center">{selectedAdvisor.bookingQrUrl ? (<><img src={selectedAdvisor.bookingQrUrl} className="w-32 h-32 mx-auto mix-blend-multiply mb-2"/><p className="text-xs text-purple-500">长按识别二维码，添加顾问微信</p></>) : <p className="text-gray-400 text-sm">暂无联系方式</p>}</div></div></div></div>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"><div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedAdvisor(null)}></div><div className="relative bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto animate-slide-up"><div className="sticky top-0 bg-white/95 backdrop-blur z-10 border-b px-6 py-4 flex justify-between items-center"><h3 className="font-bold text-lg">顾问详情</h3><button onClick={() => setSelectedAdvisor(null)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200">✕</button></div><div className="p-6 space-y-6"><div className="text-center"><img src={selectedAdvisor.imageUrl} className="w-24 h-24 mx-auto rounded-full object-cover border-4 border-purple-50 shadow-lg mb-4"/><h2 className="text-2xl font-bold text-gray-900">{selectedAdvisor.name_zh}</h2><p className="text-purple-600 font-medium text-sm mt-1">{selectedAdvisor.title_zh}</p><div className="flex justify-center gap-6 mt-6"><div className="text-center"><div className="text-xl font-bold text-gray-900">${selectedAdvisor.pricePerMinute}</div><div className="text-xs text-gray-400">每分钟</div></div><div className="w-px bg-gray-200 h-10"></div><div className="text-center"><div className="text-xl font-bold text-gray-900">{selectedAdvisor.yearsExperience}年</div><div className="text-xs text-gray-400">经验</div></div><div className="w-px bg-gray-200 h-10"></div><div className="text-center"><div className="text-xl font-bold text-gray-900">{selectedAdvisor.rating}</div><div className="text-xs text-gray-400">评分</div></div></div></div>
+        
+        <div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-600 leading-relaxed">{selectedAdvisor.bio_zh || "暂无简介"}</div>
+        
+        {/* ✅ 恢复：证书显示 */}
+        {(selectedAdvisor.certificates || []).length > 0 && (<div><h4 className="text-sm font-bold text-gray-900 mb-3 mt-2">资质认证</h4><div className="flex gap-3 overflow-x-auto pb-2">{selectedAdvisor.certificates?.map((cert, idx) => (<img key={idx} src={cert} onClick={() => setSelectedCertificate(cert)} className="h-20 rounded-lg border cursor-zoom-in" />))}</div></div>)}
+        
+        {/* ✅ 留言板 */}
+        <QuestionBox advisor={selectedAdvisor} />
+        
+        {/* ✅ 恢复：微信二维码显示 */}
+        <div className="bg-purple-50 rounded-xl p-6 border border-purple-100 text-center">{selectedAdvisor.bookingQrUrl ? (<><img src={selectedAdvisor.bookingQrUrl} className="w-32 h-32 mx-auto mix-blend-multiply mb-2"/><p className="text-xs text-purple-500">长按识别二维码，添加顾问微信</p></>) : <p className="text-gray-400 text-sm">暂无联系方式</p>}</div></div></div></div>
       )}
       {selectedCertificate && <div className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setSelectedCertificate(null)}><img src={selectedCertificate} className="max-w-full max-h-full rounded-lg"/></div>}
       <footer className="text-center text-gray-300 text-[10px] py-8"><p>© 2026 Liuzi Tree Hollow.</p></footer>
