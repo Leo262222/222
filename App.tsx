@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import emailjs from '@emailjs/browser';
 
 // =================================================================
-// ✅ EmailJS 配置 (保留配置，确保留言功能可用)
+// ✅ EmailJS 配置
 // =================================================================
 const EMAILJS_SERVICE_ID = 'service_p6mrruk';   
 const EMAILJS_TEMPLATE_ID = 'template_91gwpom'; 
@@ -17,7 +17,7 @@ interface Advisor {
   imageUrl: string;
   yearsExperience: number;
   rating: number;
-  specialties: string[];
+  specialties: any; // ⚠️ 改为 any 以容错
   isOnline: boolean;
   pricePerMinute: number;
   category: string;
@@ -25,9 +25,9 @@ interface Advisor {
   title_zh?: string;
   bio_zh?: string;
   specialties_zh?: string;
-  bookingQrUrl?: string;   // ✅ 找回字段
-  certificates?: string[]; // ✅ 找回字段
-  sort_order?: number;     // ✅ 保留排序
+  bookingQrUrl?: string;
+  certificates?: any; // ⚠️ 改为 any 以容错
+  sort_order?: number;
 }
 
 interface CategoryItem {
@@ -36,7 +36,20 @@ interface CategoryItem {
   label: string;
 }
 
-// --- 组件：提问箱 (最简单的版本，不强制用户登录) ---
+// 🛡️ 核心修复：前台的防弹背心
+const safeTags = (data: any): string[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'string') {
+        if (data.startsWith('{') && data.endsWith('}')) {
+             return data.slice(1, -1).split(',').filter(s => s.trim() !== '');
+        }
+        try { return JSON.parse(data); } catch { return data.split(','); }
+    }
+    return [];
+};
+
+// --- 组件：提问箱 ---
 const QuestionBox = ({ advisor }: { advisor: Advisor }) => {
   const [content, setContent] = useState('');
   const [userEmail, setUserEmail] = useState('');
@@ -47,13 +60,12 @@ const QuestionBox = ({ advisor }: { advisor: Advisor }) => {
     if (!content.trim()) return;
     setSending(true);
     try {
-      // 直接发送邮件，不涉及数据库存储
       await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         { 
             to_name: advisor.name_zh, 
-            from_email: userEmail || 'Anonymous', // 如果用户没填邮箱，显示匿名
+            from_email: userEmail || 'Anonymous', 
             message: content 
         },
         EMAILJS_PUBLIC_KEY
@@ -80,20 +92,8 @@ const QuestionBox = ({ advisor }: { advisor: Advisor }) => {
           <div className="p-8 text-center bg-green-50 animate-fade-in"><div className="text-4xl mb-2">✅</div><h5 className="text-sm font-bold text-green-800">发送成功！</h5></div>
         ) : (
           <div className="space-y-3">
-             {/* 这里的邮箱输入框是可选的，或者你可以删掉它，这取决于你最初的设计 */}
-             <input 
-                type="text" 
-                value={userEmail} 
-                onChange={(e) => setUserEmail(e.target.value)}
-                placeholder="您的联系方式 (邮箱/微信，可选)"
-                className="w-full p-2 text-sm border border-gray-200 rounded focus:outline-none focus:border-purple-400"
-             />
-            <textarea 
-                value={content} 
-                onChange={(e) => setContent(e.target.value)} 
-                placeholder={`Hi ${advisor.name_zh || '老师'}...`} 
-                className="w-full h-24 p-2 text-sm border border-gray-200 rounded focus:outline-none focus:border-purple-400 resize-none"
-            />
+             <input type="text" value={userEmail} onChange={(e) => setUserEmail(e.target.value)} placeholder="您的联系方式 (邮箱/微信，可选)" className="w-full p-2 text-sm border border-gray-200 rounded focus:outline-none focus:border-purple-400"/>
+            <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={`Hi ${advisor.name_zh || '老师'}...`} className="w-full h-24 p-2 text-sm border border-gray-200 rounded focus:outline-none focus:border-purple-400 resize-none"/>
             <div className="flex justify-end">
               <button onClick={handleSend} disabled={sending || !content.trim()} className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 text-white text-xs font-bold px-6 py-2 rounded-full shadow-lg transition-all">{sending ? '发送中...' : '发送'}</button>
             </div>
@@ -121,7 +121,6 @@ function App() {
         const { data: advisorsData } = await supabase
           .from('advisors')
           .select('*')
-          // ✅ 核心保留：排序逻辑 (权重优先，然后是评分)
           .order('sort_order', { ascending: true }) 
           .order('rating', { ascending: false });
           
@@ -157,10 +156,14 @@ function App() {
         {loading ? (<div className="text-center py-20 text-gray-400"><p className="animate-pulse">✨ 正在连接宇宙能量...</p></div>) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
             {filteredAdvisors.map(advisor => {
+               // 🛡️ 这里调用 safeTags 确保数据安全
+               const tags = safeTags(advisor.specialties);
+               
                return <div key={advisor.id} onClick={() => setSelectedAdvisor(advisor)} className="group bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-row md:flex-col items-start md:items-center md:text-center gap-4 md:gap-6 relative overflow-hidden"><div className="relative shrink-0"><img src={advisor.imageUrl} className="w-16 h-16 md:w-32 md:h-32 rounded-full object-cover border-2 border-white shadow-md bg-gray-100 group-hover:scale-105 transition-transform duration-500" loading="lazy" />{advisor.isOnline && <div className="hidden md:block absolute bottom-2 right-2 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>}</div><div className="flex-1 min-w-0 w-full flex flex-col md:items-center"><div className="flex md:flex-col justify-between md:justify-center items-start md:items-center w-full mb-1 md:mb-3"><h3 className="text-lg md:text-2xl font-bold text-gray-900 truncate">{advisor.name_zh || advisor.name}</h3><div className="flex items-center text-yellow-500 text-xs md:text-sm font-bold bg-yellow-50 px-2 py-0.5 rounded md:mt-2"><span>★ {advisor.rating}</span><span className="hidden md:inline text-gray-400 font-normal ml-1">({advisor.yearsExperience}年)</span></div></div><p className="text-xs md:text-base text-gray-500 font-medium mb-2 md:mb-4 truncate">{advisor.title_zh || advisor.title}</p>
-               {/* 显示标签 (Specialties) */}
+               
+               {/* 标签展示 (Safe) */}
                <div className="flex flex-wrap gap-1 md:justify-center mt-2 mb-2">
-                 {(advisor.specialties || []).slice(0, 3).map((tag, i) => (
+                 {tags.slice(0, 3).map((tag, i) => (
                    <span key={i} className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">{tag}</span>
                  ))}
                </div>
@@ -170,19 +173,17 @@ function App() {
         )}
       </main>
 
-      {/* --- 详情弹窗 (恢复显示证书、二维码、标签) --- */}
+      {/* --- 详情弹窗 --- */}
       {selectedAdvisor && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"><div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedAdvisor(null)}></div><div className="relative bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto animate-slide-up"><div className="sticky top-0 bg-white/95 backdrop-blur z-10 border-b px-6 py-4 flex justify-between items-center"><h3 className="font-bold text-lg">顾问详情</h3><button onClick={() => setSelectedAdvisor(null)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200">✕</button></div><div className="p-6 space-y-6"><div className="text-center"><img src={selectedAdvisor.imageUrl} className="w-24 h-24 mx-auto rounded-full object-cover border-4 border-purple-50 shadow-lg mb-4"/><h2 className="text-2xl font-bold text-gray-900">{selectedAdvisor.name_zh}</h2><p className="text-purple-600 font-medium text-sm mt-1">{selectedAdvisor.title_zh}</p><div className="flex justify-center gap-6 mt-6"><div className="text-center"><div className="text-xl font-bold text-gray-900">${selectedAdvisor.pricePerMinute}</div><div className="text-xs text-gray-400">每分钟</div></div><div className="w-px bg-gray-200 h-10"></div><div className="text-center"><div className="text-xl font-bold text-gray-900">{selectedAdvisor.yearsExperience}年</div><div className="text-xs text-gray-400">经验</div></div><div className="w-px bg-gray-200 h-10"></div><div className="text-center"><div className="text-xl font-bold text-gray-900">{selectedAdvisor.rating}</div><div className="text-xs text-gray-400">评分</div></div></div></div>
         
         <div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-600 leading-relaxed">{selectedAdvisor.bio_zh || "暂无简介"}</div>
         
-        {/* ✅ 恢复：证书显示 */}
-        {(selectedAdvisor.certificates || []).length > 0 && (<div><h4 className="text-sm font-bold text-gray-900 mb-3 mt-2">资质认证</h4><div className="flex gap-3 overflow-x-auto pb-2">{selectedAdvisor.certificates?.map((cert, idx) => (<img key={idx} src={cert} onClick={() => setSelectedCertificate(cert)} className="h-20 rounded-lg border cursor-zoom-in" />))}</div></div>)}
+        {/* 证书展示 (Safe) */}
+        {safeTags(selectedAdvisor.certificates).length > 0 && (<div><h4 className="text-sm font-bold text-gray-900 mb-3 mt-2">资质认证</h4><div className="flex gap-3 overflow-x-auto pb-2">{safeTags(selectedAdvisor.certificates).map((cert, idx) => (<img key={idx} src={cert} onClick={() => setSelectedCertificate(cert)} className="h-20 rounded-lg border cursor-zoom-in" />))}</div></div>)}
         
-        {/* ✅ 留言板 */}
         <QuestionBox advisor={selectedAdvisor} />
         
-        {/* ✅ 恢复：微信二维码显示 */}
         <div className="bg-purple-50 rounded-xl p-6 border border-purple-100 text-center">{selectedAdvisor.bookingQrUrl ? (<><img src={selectedAdvisor.bookingQrUrl} className="w-32 h-32 mx-auto mix-blend-multiply mb-2"/><p className="text-xs text-purple-500">长按识别二维码，添加顾问微信</p></>) : <p className="text-gray-400 text-sm">暂无联系方式</p>}</div></div></div></div>
       )}
       {selectedCertificate && <div className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setSelectedCertificate(null)}><img src={selectedCertificate} className="max-w-full max-h-full rounded-lg"/></div>}
