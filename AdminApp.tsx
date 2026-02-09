@@ -9,20 +9,20 @@ interface Advisor {
   imageUrl: string;
   yearsExperience: number;
   rating: number;
-  specialties: string[]; // 字符串数组 (标签)
+  specialties: any; // ⚠️ 改为 any，为了容错
   isOnline: boolean;
   pricePerMinute: number;
   category: string;
   name_zh?: string;
   title_zh?: string;
   bio_zh?: string;
-  specialties_zh?: string; // 旧字段兼容
-  bookingQrUrl?: string;   // ✅ 找回：微信二维码
-  certificates?: string[]; // ✅ 找回：证书列表
-  sort_order?: number;     // ✅ 保留：排序权重
+  specialties_zh?: string;
+  bookingQrUrl?: string;
+  certificates?: any; // ⚠️ 改为 any
+  sort_order?: number;
+  email?: string;
 }
 
-// 预设分类
 const CATEGORIES = [
   { value: 'Tarot', label: '塔罗/雷诺曼' },
   { value: 'Astrology', label: '占星' },
@@ -36,29 +36,47 @@ export default function AdminApp() {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<Advisor>>({});
-  
-  // 新增标签的临时输入状态
   const [newTag, setNewTag] = useState('');
 
-  // 1. 加载数据
+  // 🛡️ 核心修复：防弹背心函数
+  // 不管 data 是什么，永远返回一个数组，防止白屏
+  const safeTags = (data: any): string[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'string') {
+      // 处理 Postgres 数组格式 "{tag1,tag2}"
+      if (data.startsWith('{') && data.endsWith('}')) {
+        return data.slice(1, -1).split(',').filter(s => s.trim() !== '');
+      }
+      // 处理 JSON 格式 "['tag1', 'tag2']"
+      try { return JSON.parse(data); } catch { return data.split(','); }
+    }
+    return [];
+  };
+
   const fetchAdvisors = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('advisors')
       .select('*')
-      .order('sort_order', { ascending: true }) // ✅ 按权重排序
+      .order('sort_order', { ascending: true })
       .order('id', { ascending: true });
+    
     if (data) setAdvisors(data as Advisor[]);
-    if (error) alert('加载失败: ' + error.message);
+    if (error) console.error(error);
     setLoading(false);
   };
 
   useEffect(() => { fetchAdvisors(); }, []);
 
-  // 2. 打开弹窗
   const handleEdit = (advisor?: Advisor) => {
     if (advisor) {
-      setForm({ ...advisor });
+      // 编辑时，先用 safeTags 清洗一下数据
+      setForm({ 
+        ...advisor, 
+        specialties: safeTags(advisor.specialties),
+        certificates: safeTags(advisor.certificates)
+      });
     } else {
       setForm({
         name: 'New', rating: 5, isOnline: true, specialties: [],
@@ -70,35 +88,35 @@ export default function AdminApp() {
     setIsModalOpen(true);
   };
 
-  // 3. 标签操作
   const addTag = () => {
     if (!newTag.trim()) return;
-    const currentTags = form.specialties || [];
+    const currentTags = safeTags(form.specialties);
     setForm({ ...form, specialties: [...currentTags, newTag.trim()] });
     setNewTag('');
   };
   
   const removeTag = (indexToRemove: number) => {
-    const currentTags = form.specialties || [];
+    const currentTags = safeTags(form.specialties);
     setForm({ ...form, specialties: currentTags.filter((_, index) => index !== indexToRemove) });
   };
 
-  // 4. 保存
   const handleSave = async () => {
     const { id, ...updates } = form;
     
-    // 确保 certificates 是数组（如果是逗号分隔的字符串，需要处理一下，这里假设直接存数组）
-    // 如果 specialties_zh 是旧数据，这里同步一下
-    if (updates.specialties) {
-        updates.specialties_zh = updates.specialties.join(',');
-    }
+    // 确保保存进去的是标准数组
+    const cleanUpdates = {
+        ...updates,
+        specialties: safeTags(updates.specialties),
+        // 如果需要兼容旧字段，把数组转回逗号分隔字符串
+        specialties_zh: safeTags(updates.specialties).join(',')
+    };
 
     let error;
     if (id) {
-      const { error: err } = await supabase.from('advisors').update(updates).eq('id', id);
+      const { error: err } = await supabase.from('advisors').update(cleanUpdates).eq('id', id);
       error = err;
     } else {
-      const { error: err } = await supabase.from('advisors').insert([updates]);
+      const { error: err } = await supabase.from('advisors').insert([cleanUpdates]);
       error = err;
     }
 
@@ -131,6 +149,7 @@ export default function AdminApp() {
                 <tr>
                   <th className="p-4 w-20">排序</th>
                   <th className="p-4">顾问</th>
+                  <th className="p-4">绑定邮箱</th>
                   <th className="p-4">分类</th>
                   <th className="p-4">标签 (话题)</th>
                   <th className="p-4">价格</th>
@@ -152,9 +171,13 @@ export default function AdminApp() {
                         <span className="text-xs text-gray-400">{adv.title_zh}</span>
                       </div>
                     </td>
+                    <td className="p-4">
+                      {adv.email ? <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">{adv.email}</span> : <span className="text-gray-300 text-xs">未绑定</span>}
+                    </td>
                     <td className="p-4 text-sm text-gray-600">{adv.category}</td>
+                    {/* 🛡️ 这里使用 safeTags 并在 join 前确保是数组 */}
                     <td className="p-4 text-sm text-gray-500 max-w-xs truncate">
-                        {adv.specialties?.join(', ')}
+                        {safeTags(adv.specialties).join(', ')}
                     </td>
                     <td className="p-4 font-bold">${adv.pricePerMinute}</td>
                     <td className="p-4 space-x-2 text-sm">
@@ -168,7 +191,7 @@ export default function AdminApp() {
           </div>
         )}
 
-        {/* --- 编辑弹窗 (完全复刻版) --- */}
+        {/* --- 编辑弹窗 --- */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
             <div className="bg-white w-full max-w-3xl rounded-2xl p-6 shadow-2xl h-[90vh] overflow-y-auto relative">
@@ -177,16 +200,22 @@ export default function AdminApp() {
               
               <div className="space-y-6">
                 
-                {/* 1. 核心排序 */}
+                {/* 邮箱绑定 (恢复) */}
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                  <label className="block text-sm font-bold text-blue-800 mb-1">📧 绑定谷歌邮箱</label>
+                  <input type="text" value={form.email || ''} onChange={e => setForm({...form, email: e.target.value})} placeholder="advisor@gmail.com" className="w-full p-2 border border-blue-300 rounded font-mono text-blue-900"/>
+                </div>
+
+                {/* 核心排序 */}
                 <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200 flex items-center justify-between">
                     <div>
                         <span className="font-bold text-yellow-800">🔥 排序权重</span>
-                        <span className="text-xs text-yellow-600 ml-2">(数字越小，排名越靠前。默认100)</span>
+                        <span className="text-xs text-yellow-600 ml-2">(数字越小，排名越靠前)</span>
                     </div>
                     <input type="number" value={form.sort_order || 100} onChange={e => setForm({...form, sort_order: parseInt(e.target.value)})} className="w-24 p-2 border border-yellow-400 rounded bg-white font-bold text-center"/>
                 </div>
 
-                {/* 2. 基本信息 */}
+                {/* 基本信息 */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">姓名 (中文)</label>
@@ -203,7 +232,7 @@ export default function AdminApp() {
                   <textarea value={form.bio_zh || ''} onChange={e => setForm({...form, bio_zh: e.target.value})} className="w-full p-2 border rounded-lg h-24"></textarea>
                 </div>
 
-                {/* 3. 分类 & 标签 (修复重点) */}
+                {/* 分类 & 标签 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">所属分类</label>
@@ -218,7 +247,8 @@ export default function AdminApp() {
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">擅长话题 (标签)</label>
                         <div className="flex gap-2 flex-wrap mb-2">
-                            {(form.specialties || []).map((tag, idx) => (
+                            {/* 🛡️ 再次使用 safeTags 确保 map 正常工作 */}
+                            {safeTags(form.specialties).map((tag, idx) => (
                                 <span key={idx} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs flex items-center gap-1 border">
                                     {tag} <button onClick={() => removeTag(idx)} className="text-gray-400 hover:text-red-500">×</button>
                                 </span>
@@ -231,7 +261,7 @@ export default function AdminApp() {
                     </div>
                 </div>
 
-                {/* 4. 价格与经验 */}
+                {/* 价格与经验 */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">价格 ($/分)</label>
@@ -247,7 +277,7 @@ export default function AdminApp() {
                   </div>
                 </div>
                 
-                {/* 5. 图片配置 (头像、二维码、证书) */}
+                {/* 图片配置 */}
                 <div className="space-y-3 pt-4 border-t border-gray-100">
                     <h3 className="font-bold text-gray-800">图片配置</h3>
                     <div>
@@ -255,13 +285,13 @@ export default function AdminApp() {
                         <input type="text" value={form.imageUrl || ''} onChange={e => setForm({...form, imageUrl: e.target.value})} className="w-full p-2 border rounded text-xs text-gray-600 bg-gray-50"/>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">微信二维码 URL (Booking QR)</label>
-                        <input type="text" value={form.bookingQrUrl || ''} onChange={e => setForm({...form, bookingQrUrl: e.target.value})} className="w-full p-2 border rounded text-xs text-gray-600 bg-gray-50" placeholder="https://..."/>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">微信二维码 URL</label>
+                        <input type="text" value={form.bookingQrUrl || ''} onChange={e => setForm({...form, bookingQrUrl: e.target.value})} className="w-full p-2 border rounded text-xs text-gray-600 bg-gray-50"/>
                     </div>
-                    {/* 简化处理：证书暂时作为一个长字符串输入，如果需要多张可用逗号分隔逻辑，这里简化为只填一个URL用于展示 */}
+                    {/* 证书，简化为单行输入 */}
                     <div>
-                         <label className="block text-xs font-bold text-gray-500 mb-1">证书 URL (多张用逗号分隔)</label>
-                         <input type="text" value={form.certificates?.join(',') || ''} onChange={e => setForm({...form, certificates: e.target.value.split(',')})} className="w-full p-2 border rounded text-xs text-gray-600 bg-gray-50"/>
+                         <label className="block text-xs font-bold text-gray-500 mb-1">证书 URL (多张请用逗号分隔)</label>
+                         <input type="text" value={safeTags(form.certificates).join(',')} onChange={e => setForm({...form, certificates: e.target.value})} className="w-full p-2 border rounded text-xs text-gray-600 bg-gray-50"/>
                     </div>
                 </div>
 
