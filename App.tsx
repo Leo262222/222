@@ -19,7 +19,7 @@ interface Advisor {
   specialties_zh?: string;
   bookingQrUrl?: string;
   certificates?: any;
-  sort_order?: number; // ✅ 排序字段
+  sort_order?: number; // 排序字段
 }
 
 interface CategoryItem {
@@ -58,7 +58,7 @@ function App() {
           .from('advisors')
           .select('*')
           .order('sort_order', { ascending: true }) 
-          .order('rating', { ascending: false });
+          .order('id', { ascending: true }); // 移除按 rating 排序的备用逻辑
           
         setAdvisors((advisorsData as any) || []);
         
@@ -143,10 +143,12 @@ function App() {
                  <div className="flex-1 min-w-0 w-full flex flex-col md:items-center z-10">
                    <div className="flex md:flex-col justify-between md:justify-center items-start md:items-center w-full mb-1 md:mb-3">
                      <h3 className="text-lg md:text-2xl font-bold text-gray-100 truncate group-hover:text-purple-300 transition-colors">{advisor.name_zh || advisor.name}</h3>
-                     <div className="flex items-center text-yellow-400 text-xs md:text-sm font-bold bg-yellow-400/10 px-2 py-0.5 rounded md:mt-2 border border-yellow-400/20">
-                       <span className="drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">★ {advisor.rating}</span>
-                       <span className="hidden md:inline text-gray-500 font-normal ml-1">({advisor.yearsExperience}年)</span>
+                     
+                     {/* ✅ 修改点：移除星星评分，只保留优雅的年限展示 */}
+                     <div className="flex items-center text-purple-300 text-xs md:text-sm font-medium bg-purple-900/20 px-2 py-0.5 rounded md:mt-2 border border-purple-800/30">
+                       <span>修行 {advisor.yearsExperience} 年</span>
                      </div>
+
                    </div>
                    <p className="text-xs md:text-sm text-purple-300/80 font-medium mb-2 md:mb-4 truncate">{advisor.title_zh || advisor.title}</p>
                
@@ -198,12 +200,17 @@ function App() {
                 <h2 className="text-2xl font-bold text-gray-100">{selectedAdvisor.name_zh || selectedAdvisor.name}</h2>
                 <p className="text-purple-400 font-medium text-sm mt-1">{selectedAdvisor.title_zh || selectedAdvisor.title}</p>
                 
-                <div className="flex justify-center gap-6 mt-6">
-                  <div className="text-center"><div className="text-xl font-bold text-gray-100">${selectedAdvisor.pricePerMinute}</div><div className="text-xs text-gray-500">每分钟</div></div>
-                  <div className="w-px bg-[#232738] h-10"></div>
-                  <div className="text-center"><div className="text-xl font-bold text-gray-100">{selectedAdvisor.yearsExperience}年</div><div className="text-xs text-gray-500">修行经验</div></div>
-                  <div className="w-px bg-[#232738] h-10"></div>
-                  <div className="text-center"><div className="text-xl font-bold text-yellow-400">{selectedAdvisor.rating}</div><div className="text-xs text-gray-500">宇宙评分</div></div>
+                {/* ✅ 修改点：弹窗内的三列数据变两列，去掉了评分，保留价格和经验 */}
+                <div className="flex justify-center gap-10 mt-6">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-gray-100">${selectedAdvisor.pricePerMinute}</div>
+                    <div className="text-xs text-gray-500 mt-1">每分钟</div>
+                  </div>
+                  <div className="w-px bg-[#232738] h-12"></div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-gray-100">{selectedAdvisor.yearsExperience} 年</div>
+                    <div className="text-xs text-gray-500 mt-1">修行经验</div>
+                  </div>
                 </div>
               </div>
           
