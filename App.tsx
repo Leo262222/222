@@ -138,7 +138,7 @@ function App() {
         {!isScrolled && (
           <div className="max-w-6xl mx-auto mt-4 md:mt-6 animate-slide-down">
             <div className="bg-[#161925]/80 rounded-lg border border-purple-800/30 text-xs sm:text-sm text-gray-400 p-3 leading-relaxed shadow-inner">
-              留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是亲朋关系&学业工作，连线懂你的玄学导师，将心中困惑化为指引的灯塔。
+              留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是亲朋关系&学业工作，连线懂经过平台验证的玄学导师，从另一个维度解答内心的疑惑。
             </div>
           </div>
         )}
