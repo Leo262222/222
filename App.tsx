@@ -235,6 +235,17 @@ function App() {
                 <h2 className="text-2xl font-bold text-gray-100">{selectedAdvisor.name_zh || selectedAdvisor.name}</h2>
                 <p className="text-purple-400 font-medium text-sm mt-1">{selectedAdvisor.title_zh || selectedAdvisor.title}</p>
                 
+                {/* ✅ 新增：在详情页完整展示所有擅长领域的标签 */}
+                {safeTags(selectedAdvisor.specialties_zh || selectedAdvisor.specialties).length > 0 && (
+                  <div className="flex flex-wrap justify-center gap-2 mt-4">
+                    {safeTags(selectedAdvisor.specialties_zh || selectedAdvisor.specialties).map((tag, idx) => (
+                      <span key={idx} className="text-[11px] bg-purple-900/30 text-purple-300 px-2.5 py-1 rounded border border-purple-700/30 backdrop-blur-sm">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex justify-center gap-10 mt-6">
                   <div className="text-center">
                     <div className="text-xl font-bold text-gray-100">${selectedAdvisor.pricePerMinute}</div>
@@ -255,7 +266,6 @@ function App() {
           
               {safeTags(selectedAdvisor.certificates).length > 0 && (
                 <div>
-                  {/* ✅ 修改点：将“灵性资质”替换为“证书资质” */}
                   <h4 className="text-sm font-bold text-gray-300 mb-3 mt-2 tracking-wider flex items-center gap-2">
                     <span className="text-purple-500">✦</span> 证书资质
                   </h4>
