@@ -19,7 +19,7 @@ interface Advisor {
   specialties_zh?: string;
   bookingQrUrl?: string;
   certificates?: any;
-  sort_order?: number; // 排序字段
+  sort_order?: number; 
 }
 
 interface CategoryItem {
@@ -28,7 +28,6 @@ interface CategoryItem {
   label: string;
 }
 
-// 🛡️ 核心修复：前台防白屏函数
 const safeTags = (data: any): string[] => {
     if (!data) return [];
     if (Array.isArray(data)) return data;
@@ -39,7 +38,6 @@ const safeTags = (data: any): string[] => {
     return [];
 };
 
-// --- 主程序 ---
 function App() {
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -49,16 +47,16 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
 
+  // 1. 获取数据
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // ✅ 核心：生产环境按 sort_order 排序
         const { data: advisorsData } = await supabase
           .from('advisors')
           .select('*')
           .order('sort_order', { ascending: true }) 
-          .order('id', { ascending: true }); // 移除按 rating 排序的备用逻辑
+          .order('id', { ascending: true });
           
         setAdvisors((advisorsData as any) || []);
         
@@ -73,13 +71,63 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // 🌟 2. 核心体验优化：弹窗防穿透滚动
+  useEffect(() => {
+    if (selectedAdvisor || selectedCertificate) {
+      document.body.style.overflow = 'hidden'; // 打开弹窗时锁定背景
+    } else {
+      document.body.style.overflow = 'unset';  // 关闭时恢复
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [selectedAdvisor, selectedCertificate]);
+
+  // 🌟 3. 核心体验优化：手机侧滑/物理返回键支持
+  useEffect(() => {
+    const handlePopState = () => {
+      const hash = window.location.hash;
+      if (hash === '#detail') {
+        // 如果是从证书放大图退回来，关掉证书，保留顾问详情
+        setSelectedCertificate(null);
+      } else if (hash === '' || hash === '#') {
+        // 如果是从详情退回首页，全部关掉
+        setSelectedAdvisor(null);
+        setSelectedCertificate(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // 💡 包装打开/关闭事件，注入浏览器的 History
+  const openAdvisorDetail = (advisor: Advisor) => {
+    setSelectedAdvisor(advisor);
+    window.history.pushState({ modal: 'detail' }, '', '#detail');
+  };
+
+  const closeAdvisorDetail = () => {
+    setSelectedAdvisor(null);
+    if (window.location.hash === '#detail') {
+      window.history.back(); // 触发真正的后退，把假网址消掉
+    }
+  };
+
+  const openCertDetail = (cert: string) => {
+    setSelectedCertificate(cert);
+    window.history.pushState({ modal: 'cert' }, '', '#cert');
+  };
+
+  const closeCertDetail = () => {
+    setSelectedCertificate(null);
+    if (window.location.hash === '#cert') {
+      window.history.back();
+    }
+  };
+
   const filteredAdvisors = selectedCategory === 'All' ? advisors : advisors.filter(a => (a.category || '').includes(selectedCategory));
 
   return (
-    // 🌌 全局暗夜背景
     <div className="min-h-screen bg-[#0f111a] font-sans text-gray-200 pb-20 transition-colors duration-500">
       
-      {/* 🌌 头部：深渊黑 + 紫色光晕边界 */}
       <header className={`bg-[#090b10]/95 backdrop-blur-md border-b border-purple-900/30 px-4 sticky top-0 z-40 transition-all duration-300 ${isScrolled ? 'py-3 shadow-[0_4px_30px_rgba(88,28,135,0.15)]' : 'py-6'}`}>
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex-1">
@@ -99,7 +147,6 @@ function App() {
         )}
       </header>
 
-      {/* 🌌 分类栏：玻璃态暗色质感 */}
       <div className="max-w-6xl mx-auto px-4 mt-6 sticky top-[70px] z-30"> 
         <div className="bg-[#161925]/90 backdrop-blur-sm p-2 rounded-xl border border-[#232738] flex gap-2 overflow-x-auto no-scrollbar shadow-lg"> 
           {categories.map(cat => (
@@ -129,13 +176,11 @@ function App() {
             {filteredAdvisors.map(advisor => {
                const tags = safeTags(advisor.specialties_zh || advisor.specialties);
                
-               return <div key={advisor.id} onClick={() => setSelectedAdvisor(advisor)} className="group bg-[#161925] rounded-2xl p-4 md:p-6 shadow-lg border border-[#232738] hover:border-purple-500/40 hover:shadow-[0_8px_30px_rgba(147,51,234,0.15)] hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-row md:flex-col items-start md:items-center md:text-center gap-4 md:gap-6 relative overflow-hidden">
+               return <div key={advisor.id} onClick={() => openAdvisorDetail(advisor)} className="group bg-[#161925] rounded-2xl p-4 md:p-6 shadow-lg border border-[#232738] hover:border-purple-500/40 hover:shadow-[0_8px_30px_rgba(147,51,234,0.15)] hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-row md:flex-col items-start md:items-center md:text-center gap-4 md:gap-6 relative overflow-hidden">
                  
-                 {/* 🌌 光晕背景特效 (仅在 hover 时显现) */}
                  <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
 
                  <div className="relative shrink-0 z-10">
-                   {/* 🌌 导师头像：深色边框 */}
                    <img src={advisor.imageUrl} className="w-16 h-16 md:w-32 md:h-32 rounded-full object-cover border-2 border-[#232738] shadow-[0_0_15px_rgba(0,0,0,0.5)] bg-[#0f111a] group-hover:scale-105 group-hover:border-purple-500/50 transition-all duration-500" loading="lazy" />
                    {advisor.isOnline && <div className="hidden md:block absolute bottom-2 right-2 w-4 h-4 bg-emerald-400 border-2 border-[#161925] rounded-full animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.6)]"></div>}
                  </div>
@@ -143,16 +188,12 @@ function App() {
                  <div className="flex-1 min-w-0 w-full flex flex-col md:items-center z-10">
                    <div className="flex md:flex-col justify-between md:justify-center items-start md:items-center w-full mb-1 md:mb-3">
                      <h3 className="text-lg md:text-2xl font-bold text-gray-100 truncate group-hover:text-purple-300 transition-colors">{advisor.name_zh || advisor.name}</h3>
-                     
-                     {/* ✅ 修改点：移除星星评分，只保留优雅的年限展示 */}
                      <div className="flex items-center text-purple-300 text-xs md:text-sm font-medium bg-purple-900/20 px-2 py-0.5 rounded md:mt-2 border border-purple-800/30">
                        <span>修行 {advisor.yearsExperience} 年</span>
                      </div>
-
                    </div>
                    <p className="text-xs md:text-sm text-purple-300/80 font-medium mb-2 md:mb-4 truncate">{advisor.title_zh || advisor.title}</p>
                
-                   {/* 🌌 标签展示：暗紫底色 + 霓虹紫文字 */}
                    <div className="flex flex-wrap gap-1.5 md:justify-center mt-2 mb-3">
                      {tags.slice(0, 3).map((tag, i) => (
                        <span key={i} className="text-[10px] bg-purple-900/30 text-purple-300 px-2 py-1 rounded border border-purple-700/30 backdrop-blur-sm">{tag}</span>
@@ -164,7 +205,6 @@ function App() {
                        <span className="text-sm md:text-3xl font-bold text-gray-100">$ {advisor.pricePerMinute}</span>
                        <span className="text-xs md:text-sm text-gray-500"> / 分钟</span>
                      </div>
-                     {/* 🌌 主要按钮：紫色渐变光泽 */}
                      <div className="hidden md:block w-full">
                        <button className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow-[0_4px_15px_rgba(147,51,234,0.3)] transition-all duration-300 flex items-center justify-center gap-2">
                          <span className="text-xl">✨</span> 立即连线
@@ -178,21 +218,20 @@ function App() {
         )}
       </main>
 
-      {/* --- 🌌 详情弹窗 (暗黑神秘版) --- */}
+      {/* --- 🌌 详情弹窗 --- */}
       {selectedAdvisor && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
-          {/* 极深遮罩层 */}
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedAdvisor(null)}></div>
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+          {/* 点击遮罩层执行新的关闭逻辑 */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={closeAdvisorDetail}></div>
           
           <div className="relative bg-[#161925] border border-[#232738] w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] overflow-y-auto animate-slide-up">
             
             <div className="sticky top-0 bg-[#161925]/90 backdrop-blur-xl z-20 border-b border-[#232738] px-6 py-4 flex justify-between items-center">
               <h3 className="font-bold text-lg text-gray-200 tracking-wider">神谕解析者</h3>
-              <button onClick={() => setSelectedAdvisor(null)} className="w-8 h-8 rounded-full bg-[#232738] text-gray-400 flex items-center justify-center hover:bg-gray-700 hover:text-white transition-colors">✕</button>
+              <button onClick={closeAdvisorDetail} className="w-8 h-8 rounded-full bg-[#232738] text-gray-400 flex items-center justify-center hover:bg-gray-700 hover:text-white transition-colors">✕</button>
             </div>
             
             <div className="p-6 space-y-6 relative">
-              {/* 背景装饰光晕 */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
               <div className="text-center relative z-10">
@@ -200,7 +239,6 @@ function App() {
                 <h2 className="text-2xl font-bold text-gray-100">{selectedAdvisor.name_zh || selectedAdvisor.name}</h2>
                 <p className="text-purple-400 font-medium text-sm mt-1">{selectedAdvisor.title_zh || selectedAdvisor.title}</p>
                 
-                {/* ✅ 修改点：弹窗内的三列数据变两列，去掉了评分，保留价格和经验 */}
                 <div className="flex justify-center gap-10 mt-6">
                   <div className="text-center">
                     <div className="text-xl font-bold text-gray-100">${selectedAdvisor.pricePerMinute}</div>
@@ -214,13 +252,11 @@ function App() {
                 </div>
               </div>
           
-              {/* 🌌 简介背景：深不见底的黑 */}
               <div className="bg-[#0f111a] p-5 rounded-xl text-sm text-gray-300 leading-relaxed border border-[#232738] relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-500 to-transparent"></div>
                 {selectedAdvisor.bio_zh || selectedAdvisor.bio || "这位导师很神秘，暂时没有留下简介。"}
               </div>
           
-              {/* 证书展示 */}
               {safeTags(selectedAdvisor.certificates).length > 0 && (
                 <div>
                   <h4 className="text-sm font-bold text-gray-300 mb-3 mt-2 tracking-wider flex items-center gap-2">
@@ -228,13 +264,12 @@ function App() {
                   </h4>
                   <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                     {safeTags(selectedAdvisor.certificates).map((cert, idx) => (
-                      <img key={idx} src={cert} onClick={() => setSelectedCertificate(cert)} className="h-20 rounded-lg border border-[#232738] cursor-zoom-in hover:border-purple-500/50 transition-colors opacity-80 hover:opacity-100" />
+                      <img key={idx} src={cert} onClick={() => openCertDetail(cert)} className="h-20 rounded-lg border border-[#232738] cursor-zoom-in hover:border-purple-500/50 transition-colors opacity-80 hover:opacity-100" />
                     ))}
                   </div>
                 </div>
               )}
           
-              {/* 🌌 二维码区域：暗紫晶格质感 */}
               <div className="bg-gradient-to-b from-[#1a142c] to-[#0f111a] rounded-xl p-6 border border-purple-900/40 text-center relative overflow-hidden shadow-inner">
                 {selectedAdvisor.bookingQrUrl ? (
                   <>
@@ -252,8 +287,8 @@ function App() {
         </div>
       )}
 
-      {/* 证书大图放大 */}
-      {selectedCertificate && <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setSelectedCertificate(null)}><img src={selectedCertificate} className="max-w-full max-h-full rounded-lg shadow-[0_0_30px_rgba(147,51,234,0.3)] border border-gray-800"/></div>}
+      {/* 证书放大弹窗：执行新的关闭逻辑 */}
+      {selectedCertificate && <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out animate-fade-in" onClick={closeCertDetail}><img src={selectedCertificate} className="max-w-full max-h-full rounded-lg shadow-[0_0_30px_rgba(147,51,234,0.3)] border border-gray-800"/></div>}
       
       <footer className="text-center text-gray-600 text-[10px] py-10">
         <p>© 2026 Liuzi Tree Hollow. Production Environment.</p>
