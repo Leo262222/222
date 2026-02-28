@@ -138,7 +138,8 @@ function App() {
         {!isScrolled && (
           <div className="max-w-6xl mx-auto mt-4 md:mt-6 animate-slide-down">
             <div className="bg-[#161925]/80 rounded-lg border border-purple-800/30 text-xs sm:text-sm text-gray-400 p-3 leading-relaxed shadow-inner">
-              留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是亲朋关系&学业工作，连线懂经过平台验证的玄学导师，从另一个维度解答内心的疑惑。
+              {/* ✅ 修改点：更新了 Slogan 文案 */}
+              留子专属的情感避风港。无论是异地恋的煎熬、无法言说的Crush、还是亲朋关系&学业工作，连线经过平台验证的玄学导师，从另一个维度解答内心的疑惑。
             </div>
           </div>
         )}
@@ -199,110 +200,4 @@ function App() {
                    
                    <div className="flex md:flex-col justify-between items-center w-full border-t md:border-t-0 border-[#232738] pt-3 md:pt-0 mt-auto">
                      <div className="md:mb-4">
-                       <span className="text-sm md:text-3xl font-bold text-gray-100">$ {advisor.pricePerMinute}</span>
-                       <span className="text-xs md:text-sm text-gray-500"> / 分钟</span>
-                     </div>
-                     <div className="hidden md:block w-full">
-                       <button className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow-[0_4px_15px_rgba(147,51,234,0.3)] transition-all duration-300 flex items-center justify-center gap-2">
-                         <span className="text-xl">✨</span> 立即连线
-                       </button>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-            })}
-          </div>
-        )}
-      </main>
-
-      {/* --- 🌌 详情弹窗 --- */}
-      {selectedAdvisor && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={closeAdvisorDetail}></div>
-          
-          <div className="relative bg-[#161925] border border-[#232738] w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] overflow-y-auto animate-slide-up">
-            
-            <div className="sticky top-0 bg-[#161925]/90 backdrop-blur-xl z-20 border-b border-[#232738] px-6 py-4 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-gray-200 tracking-wider">神谕解析者</h3>
-              <button onClick={closeAdvisorDetail} className="w-8 h-8 rounded-full bg-[#232738] text-gray-400 flex items-center justify-center hover:bg-gray-700 hover:text-white transition-colors">✕</button>
-            </div>
-            
-            <div className="p-6 space-y-6 relative">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
-
-              <div className="text-center relative z-10">
-                <img src={selectedAdvisor.imageUrl} className="w-24 h-24 mx-auto rounded-full object-cover border-4 border-[#232738] shadow-[0_0_20px_rgba(0,0,0,0.5)] mb-4 bg-[#0f111a]"/>
-                <h2 className="text-2xl font-bold text-gray-100">{selectedAdvisor.name_zh || selectedAdvisor.name}</h2>
-                <p className="text-purple-400 font-medium text-sm mt-1">{selectedAdvisor.title_zh || selectedAdvisor.title}</p>
-                
-                {/* ✅ 新增：在详情页完整展示所有擅长领域的标签 */}
-                {safeTags(selectedAdvisor.specialties_zh || selectedAdvisor.specialties).length > 0 && (
-                  <div className="flex flex-wrap justify-center gap-2 mt-4">
-                    {safeTags(selectedAdvisor.specialties_zh || selectedAdvisor.specialties).map((tag, idx) => (
-                      <span key={idx} className="text-[11px] bg-purple-900/30 text-purple-300 px-2.5 py-1 rounded border border-purple-700/30 backdrop-blur-sm">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex justify-center gap-10 mt-6">
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-gray-100">${selectedAdvisor.pricePerMinute}</div>
-                    <div className="text-xs text-gray-500 mt-1">每分钟</div>
-                  </div>
-                  <div className="w-px bg-[#232738] h-12"></div>
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-gray-100">{selectedAdvisor.yearsExperience} 年</div>
-                    <div className="text-xs text-gray-500 mt-1">修行经验</div>
-                  </div>
-                </div>
-              </div>
-          
-              <div className="bg-[#0f111a] p-5 rounded-xl text-sm text-gray-300 leading-relaxed border border-[#232738] relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-500 to-transparent"></div>
-                {selectedAdvisor.bio_zh || selectedAdvisor.bio || "这位导师很神秘，暂时没有留下简介。"}
-              </div>
-          
-              {safeTags(selectedAdvisor.certificates).length > 0 && (
-                <div>
-                  <h4 className="text-sm font-bold text-gray-300 mb-3 mt-2 tracking-wider flex items-center gap-2">
-                    <span className="text-purple-500">✦</span> 证书资质
-                  </h4>
-                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {safeTags(selectedAdvisor.certificates).map((cert, idx) => (
-                      <img key={idx} src={cert} onClick={() => openCertDetail(cert)} className="h-20 rounded-lg border border-[#232738] cursor-zoom-in hover:border-purple-500/50 transition-colors opacity-80 hover:opacity-100" />
-                    ))}
-                  </div>
-                </div>
-              )}
-          
-              <div className="bg-gradient-to-b from-[#1a142c] to-[#0f111a] rounded-xl p-6 border border-purple-900/40 text-center relative overflow-hidden shadow-inner">
-                {selectedAdvisor.bookingQrUrl ? (
-                  <>
-                    <p className="text-sm font-bold text-purple-300 mb-3 tracking-widest">扫描星阵 · 建立连线</p>
-                    <div className="inline-block p-2 bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 mb-2">
-                      <img src={selectedAdvisor.bookingQrUrl} className="w-32 h-32 mx-auto rounded-lg"/>
-                    </div>
-                    <p className="text-xs text-gray-500">长按识别上方阵纹，添加导师微信</p>
-                  </>
-                ) : <p className="text-gray-500 text-sm">星象屏蔽中，暂无直接联系方式</p>}
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
-
-      {selectedCertificate && <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out animate-fade-in" onClick={closeCertDetail}><img src={selectedCertificate} className="max-w-full max-h-full rounded-lg shadow-[0_0_30px_rgba(147,51,234,0.3)] border border-gray-800"/></div>}
-      
-      <footer className="text-center text-gray-600 text-[10px] py-10">
-        <p>© 2026 Liuzi Tree Hollow. Production Environment.</p>
-        <p className="mt-1 opacity-50">Powered by Mystic Stars.</p>
-      </footer>
-
-    </div>
-  );
-}
-
-export default App;
+                       <span className="text-
