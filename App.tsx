@@ -8,8 +8,8 @@ import { AdvisorRecord, CategoryItem, normalizeAdvisor, normalizeCategory, norma
 
 const TEXT = {
   brand: '留子树洞',
-  tagline: '',
-  intro: '海外留学生专属的情感避风港。无论是异地恋的煎熬、无法言说的 Crush、还是亲朋关系&学业工作，连线懂经过平台验证的玄学导师，从另一个维度解答内心的疑惑。',
+  tagline: '树洞藏秘密，神谕断情关。',
+  intro: '留子专属的情感避风港。无论是异地恋的煎熬、无法言说的 Crush、还是亲朋关系&学业工作，连线懂经过平台验证的玄学导师，从另一个维度解答内心的疑惑。',
   all: '全部',
   loading: '正在加载顾问数据...',
   yearsPrefix: '从业 ',
@@ -218,10 +218,10 @@ function App() {
               onClick={() => setShowIntake(true)}
               className="pulse-glow w-fit rounded-full border border-purple-400/40 bg-purple-600/20 px-5 py-2.5 text-sm font-medium text-purple-200 backdrop-blur-sm transition hover:bg-purple-600/35 hover:text-white sm:ml-auto"
             >
-              ✨ 抽个塔罗牌
+              ✨ 说出你的困惑
             </button>
           </div>
-          {TEXT.tagline && <p className="mt-2 text-sm text-purple-200/80 md:text-base">{TEXT.tagline}</p>}
+          <p className="mt-2 text-sm text-purple-200/80 md:text-base">{TEXT.tagline}</p>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300/90 md:mt-5">{TEXT.intro}</p>
 
           {/* 柔光分割线 */}
